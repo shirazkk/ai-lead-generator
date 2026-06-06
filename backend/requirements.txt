@@ -1,0 +1,23 @@
+# FastAPI Backend Dependencies for AI Lead Generation Agent
+# Python 3.11+ recommended
+
+# Core Framework
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+
+# HTTP Client & Web Scraping
+httpx==0.27.0
+playwright==1.46.0
+beautifulsoup4==4.12.3
+
+# AI & API Services
+google-generativeai==0.8.0
+
+# Database & Email
+supabase==2.5.0
+resend==2.3.0
+
+# Configuration & Validation
+python-dotenv==1.0.0
+pydantic==2.8.0
+pydantic-settings==2.4.0
