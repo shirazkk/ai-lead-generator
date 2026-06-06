@@ -9,15 +9,15 @@ specific problems that a website could solve.
 import logging
 from typing import Dict, Any
 
-from ..services import GeminiService
-from ..models import EnrichedBusiness
-from ..config import settings
-from ..prompts import ANALYZER_PROMPT
+from services.gemini_service import GeminiService
+from models import EnrichedBusiness
+from config import settings
+from prompts import ANALYZER_PROMPT
 
 logger = logging.getLogger(__name__)
 
 
-async def analyze_lead(enriched_business: EnrichedBusiness) -> Dict[str, Any]:
+async def analyze_lead(enriched_business: EnrichedBusiness, gemini: GeminiService = None) -> Dict[str, Any]:
     """
     Analyze enriched business data and score the opportunity.
 
@@ -29,6 +29,7 @@ async def analyze_lead(enriched_business: EnrichedBusiness) -> Dict[str, Any]:
 
     Args:
         enriched_business: Enriched business data from Scraper Agent
+        gemini: Optional GeminiService instance for dependency injection
 
     Returns:
         Dictionary containing:
@@ -49,8 +50,9 @@ async def analyze_lead(enriched_business: EnrichedBusiness) -> Dict[str, Any]:
     logger.info(f"Analyzer Agent: Analyzing '{enriched_business.business_name}'")
 
     try:
-        # Initialize Gemini service
-        gemini = GeminiService(api_key=settings.gemini_api_key)
+        # Initialize Gemini service (use injected or new instance)
+        if gemini is None:
+            gemini = GeminiService(api_key=settings.gemini_api_key)
 
         # Prepare business data for analysis
         business_data = _format_business_data(enriched_business)

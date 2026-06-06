@@ -5,7 +5,7 @@ This model represents the initial business data collected from Google Maps
 via the Serper API by the Discovery Agent.
 """
 
-from typing import Optional
+from typing import Optional, List
 from uuid import uuid4
 from pydantic import BaseModel, Field
 
@@ -64,6 +64,22 @@ class RawBusiness(BaseModel):
     google_maps_url: Optional[str] = Field(
         None,
         description="Direct link to Google Maps listing"
+    )
+    place_id: Optional[str] = Field(
+        None,
+        description="Google Places API ID"
+    )
+    country: Optional[str] = Field(
+        None,
+        description="Country where business is located"
+    )
+    yelp_url: Optional[str] = Field(
+        None,
+        description="Direct link to Yelp listing"
+    )
+    social_urls: List[str] = Field(
+        default_factory=list,
+        description="List of social media URLs"
     )
     website_status: str = Field(
         default="none",

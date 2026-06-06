@@ -1,7 +1,7 @@
 import pytest
 from httpx import AsyncClient
-from backend.main import app
-from backend.services.supabase_service import SupabaseService
+from main import app
+from services.supabase_service import SupabaseService
 
 # Initialize Supabase service for direct database verification
 db = SupabaseService()

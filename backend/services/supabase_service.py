@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from supabase import create_client, Client
 from postgrest.exceptions import APIError
 
-from ..config import settings
+from config import settings
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)

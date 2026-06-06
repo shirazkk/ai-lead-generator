@@ -11,11 +11,11 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
-from ..services.supabase_service import SupabaseService
-from ..services.email_service import send_email
-from ..agents.outreach_agent import generate_outreach
-from ..models.lead import Lead
-from ..models.outreach import Outreach
+from services.supabase_service import SupabaseService
+from services.email_service import send_email
+from agents.outreach_agent import generate_outreach
+from models.lead import Lead
+from models.outreach import Outreach
 
 logger = logging.getLogger(__name__)
 

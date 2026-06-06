@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "firecrawl": {
+      "source": "firecrawl/cli",
+      "sourceType": "github",
+      "skillPath": "skills/firecrawl-cli/SKILL.md",
+      "computedHash": "3fb16339aa14ef2dfd56952c95c1061d40b59153dd9fe1aea90f003de6fc94b5"
+    }
+  }
+}

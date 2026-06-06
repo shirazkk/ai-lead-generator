@@ -30,9 +30,9 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from backend.config import settings
-from backend.routers import search, leads, outreach
-from backend.routers import status as status_router
+from config import settings
+from routers import search, leads, outreach
+from routers import status as status_router
 
 # Configure logging
 logging.basicConfig(
@@ -65,8 +65,7 @@ async def lifespan(_app: FastAPI):
 
     # Validate required API keys are present
     required_keys = {
-        "Gemini API": settings.gemini_api_key,
-        "Serper API": settings.serper_api_key,
+        "Gemini AI API": settings.gemini_api_key,
         "Supabase URL": settings.supabase_url,
         "Supabase Key": settings.supabase_key,
         "Resend API": settings.resend_api_key,

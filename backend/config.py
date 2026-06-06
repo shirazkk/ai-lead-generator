@@ -33,9 +33,19 @@ class Settings(BaseSettings):
         description="Google Gemini AI API key for lead analysis and content generation"
     )
 
-    serper_api_key: str = Field(
+    serper_api_key: str | None = Field(
+        default=None,
+        description="Serper API key for web search and lead discovery (deprecated)"
+    )
+
+    firecrawl_api_key: str = Field(
         ...,
-        description="Serper API key for web search and lead discovery"
+        description="Firecrawl API key for structured data scraping"
+    )
+
+    google_places_api_key: str = Field(
+        ...,
+        description="Google Places API key for lead discovery"
     )
 
     # Database

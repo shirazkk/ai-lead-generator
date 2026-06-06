@@ -65,38 +65,58 @@ export default function Home() {
     setCompletedSteps([]);
 
     try {
-      // Simulate pipeline progress
-      const progressInterval = setInterval(() => {
-        setCurrentStep((prev) => {
-          if (prev < 3) {
-            setCompletedSteps((completed) => [...completed, prev]);
-            return prev + 1;
-          }
-          return prev;
-        });
-      }, 1500);
-
       const result = await searchLeads(request);
-
-      clearInterval(progressInterval);
-      setCompletedSteps([0, 1, 2, 3]);
-      setCurrentStep(3);
-
-      if (result.success && result.leads) {
-        setLeads((prevLeads) => [...result.leads, ...prevLeads]);
+      if (!result.success || !result.job_id) {
+        throw new Error('Failed to initiate search');
       }
 
-      // Hide progress after 2 seconds
-      setTimeout(() => {
+      const job_id = result.job_id;
+      const eventSource = new EventSource(`http://localhost:8000/api/status/${job_id}/stream`);
+
+      eventSource.addEventListener('progress', (event) => {
+        const data = JSON.parse(event.data);
+        
+        // Map agent status to steps
+        const agentSteps = ['discovery', 'scraper', 'analyzer', 'outreach'];
+        
+        const completed: number[] = [];
+        let current = 0;
+
+        agentSteps.forEach((agent, index) => {
+          const agentStatus = data.agents[agent];
+          if (agentStatus.status === 'completed') {
+            completed.push(index);
+          } else if (agentStatus.status === 'running') {
+            current = index;
+          }
+        });
+
+        setCurrentStep(current);
+        setCompletedSteps(completed);
+
+        if (data.status === 'completed') {
+          eventSource.close();
+          if (result.leads) {
+            setLeads((prevLeads) => [...result.leads!, ...prevLeads]);
+          }
+          
+          setTimeout(() => {
+            setSearching(false);
+            setCurrentStep(0);
+            setCompletedSteps([]);
+          }, 1000);
+        }
+      });
+
+      eventSource.onerror = () => {
+        eventSource.close();
+        setError('Error during real-time progress tracking');
         setSearching(false);
-        setCurrentStep(0);
-        setCompletedSteps([]);
-      }, 2000);
+      };
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
       setSearching(false);
-      setCurrentStep(0);
-      setCompletedSteps([]);
     }
   };
 

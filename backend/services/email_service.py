@@ -1,6 +1,6 @@
 import logging
 import resend
-from ..config import settings
+from config import settings
 
 # Configure Resend API Key
 resend.api_key = settings.resend_api_key

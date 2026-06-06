@@ -10,9 +10,9 @@ from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, status, Query
 from pydantic import BaseModel, Field
 
-from ..services.supabase_service import SupabaseService
-from ..models.lead import Lead
-from ..models.outreach import Outreach
+from services.supabase_service import SupabaseService
+from models.lead import Lead
+from models.outreach import Outreach
 
 logger = logging.getLogger(__name__)
 

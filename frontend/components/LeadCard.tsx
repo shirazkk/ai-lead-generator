@@ -10,95 +10,55 @@ interface LeadCardProps {
 
 export default function LeadCard({ lead, onViewOutreach, onDelete }: LeadCardProps) {
   const getScoreColor = (score: number) => {
-    if (score >= 8) return 'bg-green-500';
-    if (score >= 5) return 'bg-yellow-500';
-    return 'bg-red-500';
-  };
-
-  const handleDelete = () => {
-    if (confirm(`Are you sure you want to delete ${lead.business_name}?`)) {
-      onDelete(lead.id);
-    }
+    if (score >= 8) return 'text-emerald-400';
+    if (score >= 5) return 'text-amber-400';
+    return 'text-rose-400';
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700 hover:bg-gray-750 transition-colors duration-200">
-      <div className="flex items-start justify-between mb-3">
-        <h3 className="text-xl font-bold text-white flex-1">{lead.business_name}</h3>
-        <span
-          className={`${getScoreColor(
-            lead.opportunity_score
-          )} text-white text-sm font-bold px-3 py-1 rounded-full ml-2`}
-        >
-          {lead.opportunity_score}/10
+    <div className="bg-surface rounded-xl p-6 border border-surface transition-all duration-300 hover:border-zinc-700 hover:shadow-2xl">
+      <div className="flex items-start justify-between mb-5">
+        <h3 className="text-lg font-semibold text-text-primary tracking-tight">{lead.business_name}</h3>
+        <span className={`font-mono text-sm font-medium ${getScoreColor(lead.opportunity_score)} bg-zinc-900 px-2.5 py-0.5 rounded border border-zinc-800`}>
+          Score: {lead.opportunity_score}
         </span>
       </div>
 
-      <div className="space-y-2 mb-4">
-        <div className="flex items-center gap-2 text-gray-300 text-sm">
-          <span className="text-gray-400">📍</span>
-          <span>{lead.city}</span>
-        </div>
-
-        <div className="flex items-center gap-2 text-gray-300 text-sm">
-          <span className="text-gray-400">🏢</span>
-          <span>{lead.business_type}</span>
-        </div>
-
-        <div className="flex items-center gap-2 text-gray-300 text-sm">
-          <span className="text-gray-400">📞</span>
-          <span>{lead.phone}</span>
-        </div>
-
-        {lead.email ? (
-          <div className="flex items-center gap-2 text-gray-300 text-sm">
-            <span className="text-gray-400">✉️</span>
-            <span>{lead.email}</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 text-sm">
-            <span className="bg-gray-700 text-gray-400 px-2 py-1 rounded text-xs">
-              No email found
-            </span>
-          </div>
-        )}
+      <div className="space-y-3 mb-6">
+        <InfoItem icon="📍" label={lead.city} />
+        <InfoItem icon="🏢" label={lead.business_type} />
+        <InfoItem icon="📞" label={lead.phone} />
       </div>
 
-      <div className="mb-4">
-        <p className="text-gray-400 text-sm font-medium mb-1">Identified Problem:</p>
-        <p className="text-gray-300 text-sm line-clamp-2">{lead.identified_problem}</p>
+      <div className="mb-6">
+        <p className="text-zinc-500 text-xs uppercase tracking-wider font-semibold mb-2">Analysis</p>
+        <p className="text-text-secondary text-sm leading-relaxed line-clamp-2">{lead.identified_problem}</p>
       </div>
 
-      {lead.website_status && (
-        <div className="mb-4">
-          <span
-            className={`inline-block text-xs px-2 py-1 rounded ${
-              lead.website_status === 'none'
-                ? 'bg-red-500/20 text-red-400'
-                : lead.website_status === 'outdated'
-                ? 'bg-yellow-500/20 text-yellow-400'
-                : 'bg-orange-500/20 text-orange-400'
-            }`}
-          >
-            Website: {lead.website_status}
-          </span>
-        </div>
-      )}
-
-      <div className="flex gap-2">
+      <div className="flex gap-3 pt-4 border-t border-surface">
         <button
           onClick={() => onViewOutreach(lead)}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+          className="flex-1 bg-white hover:bg-zinc-200 text-black text-sm font-medium py-2 rounded-md transition-colors"
         >
-          View Outreach
+          Generate Outreach
         </button>
         <button
-          onClick={handleDelete}
-          className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
+          onClick={() => onDelete(lead.id)}
+          className="text-zinc-500 hover:text-rose-400 text-sm font-medium px-4 py-2 transition-colors"
         >
           Delete
         </button>
       </div>
+    </div>
+  );
+}
+
+function InfoItem({ icon, label }: { icon: string; label: string | null }) {
+  if (!label) return null;
+  return (
+    <div className="flex items-center gap-3 text-sm">
+      <span className="opacity-50">{icon}</span>
+      <span className="text-zinc-400">{label}</span>
     </div>
   );
 }

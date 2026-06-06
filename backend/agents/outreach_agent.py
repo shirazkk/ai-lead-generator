@@ -8,17 +8,18 @@ analysis, using proven copywriting principles and AI-powered personalization.
 import logging
 from typing import Dict, Any
 
-from ..services import GeminiService
-from ..models import Outreach
-from ..config import settings
-from ..prompts import OUTREACH_PROMPT
+from services.gemini_service import GeminiService
+from models import Outreach
+from config import settings
+from prompts import OUTREACH_PROMPT
 
 logger = logging.getLogger(__name__)
 
 
 async def generate_outreach(
     lead_data: Dict[str, Any],
-    analysis: Dict[str, Any]
+    analysis: Dict[str, Any],
+    gemini: GeminiService = None
 ) -> Outreach:
     """
     Generate personalized cold email outreach for a qualified lead.
@@ -44,6 +45,7 @@ async def generate_outreach(
             - identified_problem: Specific problem identified
             - website_benefits: Benefits a website would provide
             - estimated_value: Monetary value estimate
+        gemini: Optional GeminiService instance for dependency injection
 
     Returns:
         Outreach object containing:
@@ -66,8 +68,9 @@ async def generate_outreach(
     logger.info(f"Outreach Agent: Generating email for '{business_name}'")
 
     try:
-        # Initialize Gemini service
-        gemini = GeminiService(api_key=settings.gemini_api_key)
+        # Initialize Gemini service (use injected or new instance)
+        if gemini is None:
+            gemini = GeminiService(api_key=settings.gemini_api_key)
 
         # Format business data for the prompt
         formatted_data = _format_outreach_data(lead_data, analysis)
