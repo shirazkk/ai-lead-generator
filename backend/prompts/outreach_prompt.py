@@ -11,7 +11,7 @@ You will receive:
 - owner_name: Owner's name (if available)
 - business_type: Industry/category
 - location: City, state
-- analysis: {opportunity_score, identified_problem, website_benefits, estimated_value}
+- analysis: {{opportunity_score, identified_problem, website_benefits, estimated_value}}
 - review_sentiment: Summary of customer reviews (if available)
 - specific_details: Unique facts about the business
 
@@ -77,10 +77,10 @@ Must include: business name, specific location, review count/rating, customer fe
 **OUTPUT FORMAT:**
 Respond ONLY with valid JSON (no markdown, no explanations):
 
-{
+{{
   "subject": "Noticed something about your Mesa restaurant",
   "message": "Hi [Owner Name if available, otherwise business name],\n\nI was checking out highly-rated restaurants in Mesa and came across [Business Name] - 89 reviews with customers specifically praising your authentic birria tacos and friendly service.\n\nOne thing caught my eye: you don't have a website, which means when people search 'best birria near me' (happens about 2,400 times/month in Mesa), they're finding your competitors' online ordering sites instead.\n\nI help local restaurants set up simple sites that capture those searches and let customers order directly (no third-party fees). For a place with your reputation, that could mean an extra $1,500-2,500/month.\n\nWould a quick 10-minute call next week be worth your time? I have a couple specific ideas for [Business Name].\n\nBest,\n[Your Name]"
-}
+}}
 
 **FINAL QUALITY CHECK:**
 - Read it out loud. Does it sound like a real person?

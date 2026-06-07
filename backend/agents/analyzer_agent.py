@@ -65,16 +65,19 @@ async def analyze_lead(enriched_business: EnrichedBusiness, gemini: GeminiServic
             f"Analyzer Agent: Calling Gemini AI for '{enriched_business.business_name}'"
         )
 
-        analysis_result = await gemini.analyze_lead(business_data={
-            "name": enriched_business.business_name,
-            "address": enriched_business.address,
-            "phone": enriched_business.phone,
-            "rating": enriched_business.rating or "N/A",
-            "owner": enriched_business.owner_name or "Unknown",
-            "email": enriched_business.email or "Not found",
-            "socials": ", ".join(enriched_business.social_profiles) if enriched_business.social_profiles else "None",
-            "description": enriched_business.business_description or "No description available"
-        })
+        analysis_result = await gemini.analyze_lead(
+            business_data={
+                "name": enriched_business.business_name,
+                "address": enriched_business.address,
+                "phone": enriched_business.phone,
+                "rating": enriched_business.rating or "N/A",
+                "owner": enriched_business.owner_name or "Unknown",
+                "email": enriched_business.email or "Not found",
+                "socials": ", ".join(enriched_business.social_profiles) if enriched_business.social_profiles else "None",
+                "description": enriched_business.business_description or "No description available"
+            },
+            prompt=full_prompt
+        )
 
         # Validate and normalize opportunity_score
         opportunity_score = analysis_result.get("opportunity_score", 3)

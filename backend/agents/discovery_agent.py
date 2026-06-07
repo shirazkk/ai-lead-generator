@@ -2,22 +2,9 @@ import asyncio
 import logging
 from typing import List, Optional
 from models import RawBusiness
-from services.places_service import search_places
+from services.places_service import search_places, fetch_neighbourhoods
 
 logger = logging.getLogger(__name__)
-
-NEIGHBOURHOODS = {
-    "karachi": ["Defence", "Gulshan", "Clifton", "North Nazimabad", "Saddar", "Korangi", "Gulberg", "Malir"],
-    "lahore": ["DHA", "Gulberg", "Model Town", "Johar Town", "Bahria Town", "Iqbal Town", "Garden Town", "Cantt"],
-    "islamabad": ["F-7", "F-10", "G-11", "Blue Area", "DHA", "Bahria Town", "E-11", "F-6"],
-    "dubai": ["Deira", "Bur Dubai", "Jumeirah", "Al Barsha", "Downtown", "Mirdif", "Karama", "Silicon Oasis"],
-    "london": ["Shoreditch", "Brixton", "Hackney", "Peckham", "Croydon", "Ealing", "Islington", "Lewisham"],
-    "new york": ["Brooklyn", "Queens", "Bronx", "Harlem", "Astoria", "Flushing", "Bushwick", "Williamsburg"],
-    "los angeles": ["Downtown", "Compton", "East LA", "Van Nuys", "Inglewood", "Watts", "Boyle Heights", "Koreatown"],
-    "chicago": ["Pilsen", "Hyde Park", "Rogers Park", "Wicker Park", "Logan Square", "Bronzeville", "Avondale", "Englewood"],
-    "toronto": ["Scarborough", "North York", "Etobicoke", "Mississauga", "Brampton", "Vaughan", "Markham", "Ajax"],
-    "sydney": ["Parramatta", "Bankstown", "Blacktown", "Liverpool", "Penrith", "Campbelltown", "Auburn", "Fairfield"],
-}
 
 def extract_business(place: dict, city: str, business_type: str) -> Optional[RawBusiness]:
     # Only keep businesses with no website
@@ -39,17 +26,23 @@ def extract_business(place: dict, city: str, business_type: str) -> Optional[Raw
     if not name or not address:
         return None
 
+    # Parse country from formattedAddress (typically the last element after comma)
+    country = city.capitalize()
+    if address:
+        address_parts = [part.strip() for part in address.split(",")]
+        if address_parts:
+            country = address_parts[-1]
+
     return RawBusiness(
         business_name=name,
         business_type=business_type,
         address=address,
         city=city,
-        country=city.capitalize(), # Simplified inference, could be improved based on locale
-        phone=phone,
+        country=country,
+        phone=phone or "N/A",
         google_maps_url=maps_url,
         place_id=place_id,
         rating=rating,
-        business_description=description,
         website_status="none",
     )
 
@@ -57,8 +50,10 @@ async def discover_businesses(city: str, business_type: str, count: int) -> List
     all_businesses = []
     seen_place_ids = set()
     
-    city_lower = city.lower()
-    neighbourhoods = NEIGHBOURHOODS.get(city_lower, [""])
+    # Fetch neighborhoods dynamically from open-source Nominatim API
+    neighbourhoods = await fetch_neighbourhoods(city)
+    if not neighbourhoods:
+        neighbourhoods = [""]
     
     for neighbourhood in neighbourhoods:
         if len(all_businesses) >= count:

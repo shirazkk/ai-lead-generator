@@ -1,8 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 interface AgentProgressProps {
-  currentStep: number; // 0-3
-  completedSteps: number[]; // array of completed step indices
+  jobId: string;
 }
 
 const STEPS = [
@@ -12,7 +13,54 @@ const STEPS = [
   { id: 3, name: 'Outreach', icon: '✉️' },
 ];
 
-export default function AgentProgress({ currentStep, completedSteps }: AgentProgressProps) {
+export default function AgentProgress({ jobId }: AgentProgressProps) {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (!jobId) return;
+
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const eventSource = new EventSource(`${API_BASE_URL}/api/status/${jobId}/stream`);
+
+    eventSource.addEventListener('progress', (event) => {
+      const data = JSON.parse(event.data);
+      
+      if (data && data.agents) {
+        const agentSteps = ['discovery', 'scraper', 'analyzer', 'outreach'];
+        const completed: number[] = [];
+        let current = 0;
+
+        agentSteps.forEach((agent, index) => {
+          const agentStatus = data.agents[agent];
+          if (agentStatus && agentStatus.status === 'completed') {
+            completed.push(index);
+          } else if (agentStatus && agentStatus.status === 'running') {
+            current = index;
+          }
+        });
+
+        setCurrentStep(current);
+        setCompletedSteps(completed);
+      } else {
+        if (data && typeof data.current_step === 'number') {
+          setCurrentStep(data.current_step);
+        }
+        if (data && Array.isArray(data.completed_steps)) {
+          setCompletedSteps(data.completed_steps);
+        }
+      }
+    });
+
+    eventSource.onerror = () => {
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [jobId]);
+
   const getStepStatus = (stepId: number) => {
     if (completedSteps.includes(stepId)) return 'completed';
     if (stepId === currentStep) return 'in_progress';
@@ -45,7 +93,6 @@ export default function AgentProgress({ currentStep, completedSteps }: AgentProg
     <div className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700 mb-6">
       <h2 className="text-xl font-bold text-white mb-6">Agent Pipeline Progress</h2>
 
-      {/* Note: SSE integration pending for real-time updates */}
       <div className="flex items-center justify-between">
         {STEPS.map((step, index) => (
           <div key={step.id} className="flex items-center flex-1">

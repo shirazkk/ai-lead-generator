@@ -51,7 +51,8 @@ class SupabaseService:
             APIError: If database insertion fails
         """
         try:
-            logger.info(f"Creating lead: {lead_data.get('email', 'N/A')}")
+            business_name = lead_data.get('business_name') or "Unknown Business"
+            logger.info(f"Creating lead for business: {business_name}")
             
             # Convert datetime objects to ISO strings for JSON serialization
             serialized_data = {

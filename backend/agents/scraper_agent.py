@@ -13,20 +13,33 @@ async def enrich_business(raw_business: RawBusiness) -> EnrichedBusiness:
     yelp_prompt = "Extract the business description, top 3 customer reviews, and the business rating."
     social_prompt = "Extract the owner name, contact email address, and the about/bio section."
 
-    # 2. Scrape from sources
+    # 2. Find Yelp and social profiles if not present
+    yelp_url = raw_business.yelp_url
+    social_urls = raw_business.social_urls or []
+
+    if not yelp_url or not social_urls:
+        from services.firecrawl_service import search_business_urls
+        found_urls = await search_business_urls(raw_business.business_name, raw_business.city or "")
+        if not yelp_url and found_urls.get("yelp_url"):
+            yelp_url = found_urls["yelp_url"]
+        if not social_urls and found_urls.get("social_urls"):
+            social_urls = found_urls["social_urls"]
+
+    # 3. Scrape from sources
     maps_data = {}
     if raw_business.google_maps_url:
         maps_data = await scrape_url(raw_business.google_maps_url, maps_prompt)
         
     yelp_data = {}
-    if raw_business.yelp_url:
-        yelp_data = await scrape_url(raw_business.yelp_url, yelp_prompt)
+    if yelp_url:
+        yelp_data = await scrape_url(yelp_url, yelp_prompt)
         
     social_data_list = []
-    for s_url in raw_business.social_urls:
+    for s_url in social_urls:
         social_data = await scrape_url(s_url, social_prompt)
         if social_data:
             social_data_list.append(social_data)
+
 
     # Extracting fields with robust lookups
     # Firecrawl returns camelCase (e.g., ownerName), mapping to snake_case
@@ -48,7 +61,7 @@ async def enrich_business(raw_business: RawBusiness) -> EnrichedBusiness:
         country=raw_business.country,
         owner_name=owner,
         email=email,
-        social_profiles=raw_business.social_urls,
+        social_profiles=social_urls,
         business_description=description,
         reviews=yelp_data.get('reviews', [])
     )

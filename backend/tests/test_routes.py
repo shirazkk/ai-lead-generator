@@ -27,7 +27,7 @@ async def test_search_pipeline_data_persistence(async_client, mocker):
     Test the full search pipeline with mocked agent calls to focus on data persistence.
     """
     # Mocking agent calls to avoid external API dependencies and costs
-    mocker.patch("backend.routers.search.discover_leads", return_value=[
+    mocker.patch("routers.search.discover_businesses", return_value=[
         mocker.Mock(
             business_name="Test Business",
             business_type="restaurant",
@@ -39,7 +39,7 @@ async def test_search_pipeline_data_persistence(async_client, mocker):
         )
     ])
     
-    mocker.patch("backend.routers.search.enrich_business", return_value=mocker.Mock(
+    mocker.patch("routers.search.enrich_business", return_value=mocker.Mock(
         business_name="Test Business",
         business_type="restaurant",
         address="123 Test St",
@@ -55,14 +55,14 @@ async def test_search_pipeline_data_persistence(async_client, mocker):
         rating=4.0
     ))
     
-    mocker.patch("backend.routers.search.analyze_lead", return_value={
+    mocker.patch("routers.search.analyze_lead", return_value={
         "opportunity_score": 8,
         "identified_problem": "No website",
         "website_benefits": "Increased visibility, online orders",
         "estimated_value": "$1000/mo"
     })
     
-    mocker.patch("backend.routers.search.generate_outreach", return_value=mocker.Mock(
+    mocker.patch("routers.search.generate_outreach", return_value=mocker.Mock(
         id="test-outreach-id",
         lead_id="placeholder",
         subject="Your business needs a website",
@@ -175,7 +175,7 @@ async def test_outreach_regeneration(async_client, mocker):
         "sent": False
     })
     
-    mocker.patch("backend.routers.outreach.generate_outreach", return_value=mocker.Mock(
+    mocker.patch("routers.outreach.generate_outreach", return_value=mocker.Mock(
         id="new-outreach",
         lead_id="test-uuid",
         subject="Hello",
@@ -185,7 +185,7 @@ async def test_outreach_regeneration(async_client, mocker):
         model_dump=lambda: {"id": "new-outreach", "lead_id": "test-uuid", "subject": "Hello", "message": "World", "tone": "friendly"}
     ))
 
-    response = await async_client.post("/api/outreach/regenerate/test-uuid")
+    response = await async_client.post("/api/outreach/test-uuid/regenerate")
     assert response.status_code == 200
     assert response.json()["success"] is True
     assert response.json()["data"]["subject"] == "Hello"

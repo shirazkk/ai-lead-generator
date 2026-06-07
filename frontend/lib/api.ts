@@ -7,7 +7,7 @@ import type {
   ApiError,
 } from '@/types';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 class ApiClient {
   private async request<T>(
@@ -71,7 +71,7 @@ class ApiClient {
       };
     }
 
-    return response as ApiResponse<Lead[]>;
+    return response as unknown as ApiResponse<Lead[]>;
   }
 
   async getLead(leadId: string): Promise<ApiResponse<Lead>> {
@@ -98,7 +98,7 @@ class ApiClient {
       };
     }
 
-    return response as ApiResponse<Outreach>;
+    return response as unknown as ApiResponse<Outreach>;
   }
 
   async regenerateOutreach(
@@ -120,7 +120,7 @@ class ApiClient {
       };
     }
 
-    return response as ApiResponse<Outreach>;
+    return response as unknown as ApiResponse<Outreach>;
   }
 
   async sendOutreach(outreachId: string): Promise<ApiResponse<{ message: string; sent: boolean }>> {
@@ -145,22 +145,13 @@ class ApiClient {
       };
     }
 
-    return response as ApiResponse<Outreach>;
+    return response as unknown as ApiResponse<Outreach>;
+
+    }
   }
 
+  export const api = new ApiClient();
 
-  async getStats(): Promise<ApiResponse<{
-    total: number;
-    avg_score: number;
-    high_score_count: number;
-  }>> {
-    return this.request('/api/leads/stats', {
-      method: 'GET',
-    });
-  }
-}
-
-export const api = new ApiClient();
 
 export async function searchLeads(request: SearchRequest): Promise<SearchResponse> {
   const response = await api.searchLeads(request);

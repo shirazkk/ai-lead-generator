@@ -50,12 +50,13 @@ class GeminiService:
         self.model_name = "gemini-3-flash-preview"
         logger.info(f"Initialized GeminiService with model {self.model_name}")
 
-    async def analyze_lead(self, business_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def analyze_lead(self, business_data: Dict[str, Any], prompt: Optional[str] = None) -> Dict[str, Any]:
         """
         Analyze a business lead and return structured assessment.
 
         Args:
             business_data: Dictionary containing business info (name, address, phone, etc.)
+            prompt: Optional custom formatted prompt string to override the default.
 
         Returns:
             Dictionary with analysis results:
@@ -91,8 +92,9 @@ class GeminiService:
             "required": ["opportunity_score", "identified_problem", "website_benefits", "estimated_value"]
         }
 
-        # Short focused prompt (detailed prompts will be in backend/prompts/)
-        prompt = f"""Analyze this business as a potential web development lead:
+        # If custom prompt is not provided, use a fallback prompt
+        if not prompt:
+            prompt = f"""Analyze this business as a potential web development lead:
 
 Business: {business_data.get('name', 'Unknown')}
 Location: {business_data.get('address', 'Unknown')}
@@ -115,7 +117,9 @@ Assess opportunity score, identify problems, explain website benefits, and estim
     async def generate_outreach(
         self,
         lead_data: Dict[str, Any],
-        analysis: Dict[str, Any]
+        analysis: Dict[str, Any],
+        tone: Optional[str] = "friendly",
+        prompt: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Generate personalized outreach email for a lead.
@@ -123,6 +127,8 @@ Assess opportunity score, identify problems, explain website benefits, and estim
         Args:
             lead_data: Business information
             analysis: Previous analysis results from analyze_lead()
+            tone: Communication tone
+            prompt: Optional custom formatted prompt string to override the default.
 
         Returns:
             Dictionary with:
@@ -148,8 +154,9 @@ Assess opportunity score, identify problems, explain website benefits, and estim
             "required": ["subject", "message"]
         }
 
-        # Short focused prompt
-        prompt = f"""Generate personalized outreach email for:
+        # If custom prompt is not provided, use a fallback prompt
+        if not prompt:
+            prompt = f"""Generate personalized outreach email with a {tone} tone for:
 
 Business: {lead_data.get('name', 'Unknown')}
 Problem: {analysis.get('identified_problem', 'Unknown')}

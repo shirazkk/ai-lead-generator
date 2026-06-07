@@ -6,7 +6,7 @@ analysis, using proven copywriting principles and AI-powered personalization.
 """
 
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from services.gemini_service import GeminiService
 from models import Outreach
@@ -19,68 +19,36 @@ logger = logging.getLogger(__name__)
 async def generate_outreach(
     lead_data: Dict[str, Any],
     analysis: Dict[str, Any],
+    tone: Optional[str] = None,
     gemini: GeminiService = None
 ) -> Outreach:
     """
     Generate personalized cold email outreach for a qualified lead.
-
-    This function uses Gemini AI with specialized copywriting prompts to
-    create hyper-personalized emails that reference specific business details
-    and problems identified in the analysis phase.
-
+    ...
     Args:
-        lead_data: Dictionary containing lead information:
-            - business_name: Name of the business
-            - owner_name: Owner's name (if available)
-            - city: Business location
-            - rating: Google rating
-            - review_count: Number of reviews (if available)
-            - address: Full address
-            - phone: Contact phone
-            - email: Contact email (if found)
-            - description: Business description (if found)
-
-        analysis: Dictionary containing analysis results:
-            - opportunity_score: Score from 1-10
-            - identified_problem: Specific problem identified
-            - website_benefits: Benefits a website would provide
-            - estimated_value: Monetary value estimate
-        gemini: Optional GeminiService instance for dependency injection
-
-    Returns:
-        Outreach object containing:
-        - lead_id: Reference to lead (from lead_data['id'] if present)
-        - subject: Email subject line
-        - message: Email body content
-        - tone: Communication tone (default: 'friendly')
-
-    Raises:
-        Does not raise exceptions - returns fallback email on failure
-
-    Example:
-        >>> lead = {"business_name": "Joe's Pizza", "city": "Austin", ...}
-        >>> analysis = {"opportunity_score": 8, "identified_problem": ..., ...}
-        >>> outreach = await generate_outreach(lead, analysis)
-        >>> print(outreach.subject)
-        >>> print(outreach.message)
+        ...
+        tone: Optional communication tone (default: 'friendly')
     """
     business_name = lead_data.get("business_name", "Unknown Business")
-    logger.info(f"Outreach Agent: Generating email for '{business_name}'")
+    logger.info(f"Outreach Agent: Generating email for '{business_name}' with tone: {tone}")
 
     try:
         # Initialize Gemini service (use injected or new instance)
         if gemini is None:
             gemini = GeminiService(api_key=settings.gemini_api_key)
 
-        # Format business data for the prompt
-        formatted_data = _format_outreach_data(lead_data, analysis)
+        # Prepare business and analysis data for prompt
+        outreach_data = _format_outreach_data(lead_data, analysis)
+        full_prompt = OUTREACH_PROMPT.format(business_data=outreach_data)
 
         # Call Gemini AI for outreach generation
         logger.info(f"Outreach Agent: Calling Gemini AI for '{business_name}'")
 
         outreach_result = await gemini.generate_outreach(
             lead_data=lead_data,
-            analysis=analysis
+            analysis=analysis,
+            tone=tone,
+            prompt=full_prompt
         )
 
         # Extract subject and message
@@ -108,7 +76,7 @@ async def generate_outreach(
             lead_id=lead_data.get("id", "unknown"),
             subject=subject,
             message=message,
-            tone="friendly",  # Default tone
+            tone=tone or "friendly",  # Store actual tone dynamically
             sent=False,
             sent_at=None
         )

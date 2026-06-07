@@ -26,7 +26,7 @@ from agents.analyzer_agent import analyze_lead
 from agents.outreach_agent import generate_outreach
 from services.supabase_service import SupabaseService
 from services.gemini_service import GeminiService
-from services.job_store import initialize_job, update_job_status, get_job_status
+from services.job_store import initialize_job, update_job_status, get_job_status, start_job_step, complete_job_step
 from models.lead import Lead
 from models.outreach import Outreach
 from config import settings
@@ -94,10 +94,14 @@ async def _process_single_business(
     async with processing_semaphore:
         try:
             # PHASE 2: Scraper Agent - Enrich business data
+            await start_job_step(job_id, "scraper")
             enriched_business = await enrich_business(raw_business)
+            await complete_job_step(job_id, "scraper_done", "scraper")
 
             # PHASE 3: Analyzer Agent - Score opportunity
+            await start_job_step(job_id, "analyzer")
             analysis = await analyze_lead(enriched_business, gemini=gemini)
+            await complete_job_step(job_id, "analyzer_done", "analyzer")
 
             # Create Lead object
             lead = Lead(
@@ -133,8 +137,10 @@ async def _process_single_business(
                 "description": lead.business_description
             }
 
+            await start_job_step(job_id, "outreach")
             outreach = await generate_outreach(lead_data, analysis, gemini=gemini)
             outreach.lead_id = lead.id
+            await complete_job_step(job_id, "outreach_done", "outreach")
 
             # PHASE 5: Save to Supabase
             await db.create_lead(lead.model_dump())
@@ -211,9 +217,12 @@ async def search_leads(request: SearchRequest) -> SearchResponse:
             success=True,
             job_id=job_id,
             leads=leads,
-            stats=SearchStats(total=len(leads), high_score_count=high_score_count, avg_score=round(avg_score, 2))
+            stats=SearchStats(total=len(leads), high_score_count=high_score_count, avg_score=round(avg_score, 2)),
+            error=None
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Unexpected error: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

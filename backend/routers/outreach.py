@@ -76,12 +76,7 @@ async def update_outreach(outreach_id: str, request: UpdateOutreachRequest) -> O
         )
 
 
-class SendResponse(BaseModel):
-    """Response for send email operation."""
-    success: bool = Field(..., description="Whether email was marked as sent")
-    message: str = Field(..., description="Confirmation message")
-    data: Optional[Outreach] = Field(None, description="Updated outreach record")
-    error: Optional[Dict[str, Any]] = Field(None, description="Error details if failed")
+    
 
 
 @router.get(
@@ -195,7 +190,7 @@ async def regenerate_outreach(lead_id: str, tone: Optional[str] = None) -> Outre
 
         # Generate new outreach email
         logger.info(f"Generating new outreach for '{lead.business_name}' with tone: {tone}")
-        new_outreach = await generate_outreach(lead_data, analysis) # NOTE: generate_outreach might need updating to accept tone if it's not currently used.
+        new_outreach = await generate_outreach(lead_data, analysis, tone=tone)
 
         # Ensure lead_id is set correctly
         new_outreach.lead_id = lead_id

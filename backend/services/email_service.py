@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import resend
 from config import settings
@@ -32,10 +33,13 @@ async def send_email(to_email: str, subject: str, body: str) -> str:
             "text": body,  # Using text for now.
         }
 
-        response = resend.Emails.send(params)
+        response = await asyncio.to_thread(
+            lambda: resend.Emails.send(params)
+        )
         
         logger.info(f"Successfully sent email. ID: {response['id']}")
         return response['id']
     except Exception as e:
         logger.error(f"Failed to send email to {to_email}: {e}")
         raise Exception(f"Email delivery failed: {str(e)}")
+

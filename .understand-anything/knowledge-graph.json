@@ -1,0 +1,375 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "ai_lead_generator",
+    "languages": ["markdown", "python", "typescript", "javascript", "json", "yaml"],
+    "frameworks": ["Next.js", "React", "FastAPI", "Gemini", "Supabase", "Resend", "Playwright", "Firecrawl"],
+    "description": "An autonomous, AI-powered system designed to identify businesses with a weak online presence, research them, score their opportunity value, and generate hyper-personalized cold outreach emails.",
+    "analyzedAt": "2026-06-07T10:00:00Z",
+    "gitCommitHash": "3e778c605028764b6c2e07134e5c53f7a8a16348"
+  },
+  "nodes": [
+    {
+      "id": "file:backend/main.py",
+      "type": "file",
+      "name": "main.py",
+      "summary": "Main entry point for the FastAPI backend application.",
+      "tags": ["fastapi", "backend", "entry-point"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:backend/config.py",
+      "type": "file",
+      "name": "config.py",
+      "summary": "Configuration management using pydantic-settings.",
+      "tags": ["config", "pydantic", "env"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:backend/agents/analyzer_agent.py",
+      "type": "file",
+      "name": "analyzer_agent.py",
+      "summary": "AI agent for scoring lead opportunities and identifying problems.",
+      "tags": ["ai", "gemini", "agent"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:backend/agents/discovery_agent.py",
+      "type": "file",
+      "name": "discovery_agent.py",
+      "summary": "Agent for discovering businesses without websites using Google Places API.",
+      "tags": ["discovery", "google-places", "agent"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:backend/agents/outreach_agent.py",
+      "type": "file",
+      "name": "outreach_agent.py",
+      "summary": "AI agent for generating hyper-personalized cold outreach emails.",
+      "tags": ["ai", "gemini", "outreach"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:backend/agents/scraper_agent.py",
+      "type": "file",
+      "name": "scraper_agent.py",
+      "summary": "Agent for enriching business data via web scraping (Firecrawl).",
+      "tags": ["scraping", "firecrawl", "enrichment"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:backend/services/gemini_service.py",
+      "type": "service",
+      "name": "GeminiService",
+      "summary": "Service for interacting with Google Gemini 2.0 Flash API for structured analysis and generation.",
+      "tags": ["ai", "gemini", "llm"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:backend/services/supabase_service.py",
+      "type": "service",
+      "name": "SupabaseService",
+      "summary": "Asynchronous service for database operations using Supabase (PostgreSQL).",
+      "tags": ["database", "supabase", "postgres"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:backend/services/firecrawl_service.py",
+      "type": "service",
+      "name": "FirecrawlService",
+      "summary": "Service for structured web scraping and data extraction.",
+      "tags": ["scraping", "firecrawl"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:backend/services/places_service.py",
+      "type": "service",
+      "name": "PlacesService",
+      "summary": "Service for searching businesses via Google Places API.",
+      "tags": ["google-places", "search"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:backend/services/email_service.py",
+      "type": "service",
+      "name": "EmailService",
+      "summary": "Service for sending outreach emails using Resend API.",
+      "tags": ["email", "resend"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:backend/routers/search.py",
+      "type": "endpoint",
+      "name": "/api/search",
+      "summary": "Endpoint to orchestrate the full lead generation pipeline.",
+      "tags": ["pipeline", "search", "orchestration"],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:backend/routers/leads.py",
+      "type": "endpoint",
+      "name": "/api/leads",
+      "summary": "CRUD endpoints for managing lead records.",
+      "tags": ["leads", "crud"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:backend/routers/outreach.py",
+      "type": "endpoint",
+      "name": "/api/outreach",
+      "summary": "Endpoints for managing and sending outreach emails.",
+      "tags": ["outreach", "email"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:backend/models/lead.py",
+      "type": "schema",
+      "name": "Lead",
+      "summary": "Data model for a qualified lead with scoring and analysis.",
+      "tags": ["model", "pydantic", "lead"],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:frontend/app/page.tsx",
+      "type": "file",
+      "name": "page.tsx",
+      "summary": "Main dashboard page for the lead generation tool.",
+      "tags": ["nextjs", "frontend", "dashboard"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:frontend/lib/api.ts",
+      "type": "file",
+      "name": "api.ts",
+      "summary": "Frontend API client for interacting with the backend services.",
+      "tags": ["frontend", "api", "typescript"],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:backend/agents/analyzer_agent.py:analyze_lead",
+      "type": "function",
+      "name": "analyze_lead",
+      "summary": "Analyzes business data to determine opportunity score and benefits.",
+      "tags": ["analysis", "ai"],
+      "complexity": "moderate",
+      "lineRange": [23, 114]
+    },
+    {
+      "id": "function:backend/agents/discovery_agent.py:discover_businesses",
+      "type": "function",
+      "name": "discover_businesses",
+      "summary": "Searches for businesses in multiple neighborhoods and filters for those without websites.",
+      "tags": ["search", "discovery"],
+      "complexity": "moderate",
+      "lineRange": [54, 107]
+    },
+    {
+      "id": "function:backend/agents/scraper_agent.py:enrich_business",
+      "type": "function",
+      "name": "enrich_business",
+      "summary": "Enriches raw business data with details scraped from various online sources.",
+      "tags": ["scraping", "enrichment"],
+      "complexity": "moderate",
+      "lineRange": [9, 55]
+    },
+    {
+      "id": "function:backend/agents/outreach_agent.py:generate_outreach",
+      "type": "function",
+      "name": "generate_outreach",
+      "summary": "Creates a hyper-personalized email for a lead using Gemini AI.",
+      "tags": ["ai", "outreach", "email"],
+      "complexity": "moderate",
+      "lineRange": [20, 102]
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:backend/main.py",
+      "target": "file:backend/routers/search.py",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "file:backend/main.py",
+      "target": "file:backend/routers/leads.py",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "file:backend/main.py",
+      "target": "file:backend/routers/outreach.py",
+      "type": "contains",
+      "weight": 1.0
+    },
+    {
+      "source": "file:backend/routers/search.py",
+      "target": "file:backend/agents/discovery_agent.py",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "file:backend/routers/search.py",
+      "target": "file:backend/agents/scraper_agent.py",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "file:backend/routers/search.py",
+      "target": "file:backend/agents/analyzer_agent.py",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "file:backend/routers/search.py",
+      "target": "file:backend/agents/outreach_agent.py",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "file:backend/agents/analyzer_agent.py",
+      "target": "file:backend/services/gemini_service.py",
+      "type": "depends_on",
+      "weight": 0.9
+    },
+    {
+      "source": "file:backend/agents/outreach_agent.py",
+      "target": "file:backend/services/gemini_service.py",
+      "type": "depends_on",
+      "weight": 0.9
+    },
+    {
+      "source": "file:backend/agents/discovery_agent.py",
+      "target": "file:backend/services/places_service.py",
+      "type": "depends_on",
+      "weight": 0.9
+    },
+    {
+      "source": "file:backend/agents/scraper_agent.py",
+      "target": "file:backend/services/firecrawl_service.py",
+      "type": "depends_on",
+      "weight": 0.9
+    },
+    {
+      "source": "file:backend/routers/leads.py",
+      "target": "file:backend/services/supabase_service.py",
+      "type": "depends_on",
+      "weight": 0.9
+    },
+    {
+      "source": "file:backend/routers/outreach.py",
+      "target": "file:backend/services/email_service.py",
+      "type": "depends_on",
+      "weight": 0.9
+    },
+    {
+      "source": "file:frontend/app/page.tsx",
+      "target": "file:frontend/lib/api.ts",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "file:frontend/lib/api.ts",
+      "target": "file:backend/routers/search.py",
+      "type": "calls",
+      "weight": 0.8
+    },
+    {
+      "source": "file:backend/config.py",
+      "target": "file:backend/main.py",
+      "type": "configures",
+      "weight": 0.5
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:api-routing",
+      "name": "API & Routing",
+      "description": "Handles incoming HTTP requests, session management, and directs them to the appropriate services or agents.",
+      "nodeIds": [
+        "file:backend/main.py",
+        "file:backend/routers/search.py",
+        "file:backend/routers/leads.py",
+        "file:backend/routers/outreach.py"
+      ]
+    },
+    {
+      "id": "layer:autonomous-agents",
+      "name": "Autonomous Agents",
+      "description": "The 'brains' of the system. Specialized AI agents that perform discovery, scraping, analysis, and content generation.",
+      "nodeIds": [
+        "file:backend/agents/discovery_agent.py",
+        "file:backend/agents/scraper_agent.py",
+        "file:backend/agents/analyzer_agent.py",
+        "file:backend/agents/outreach_agent.py"
+      ]
+    },
+    {
+      "id": "layer:external-services",
+      "name": "External Services",
+      "description": "Wrappers and connectors for third-party APIs (Gemini, Supabase, Firecrawl, Google Places, Resend).",
+      "nodeIds": [
+        "file:backend/services/gemini_service.py",
+        "file:backend/services/supabase_service.py",
+        "file:backend/services/firecrawl_service.py",
+        "file:backend/services/places_service.py",
+        "file:backend/services/email_service.py"
+      ]
+    },
+    {
+      "id": "layer:data-models",
+      "name": "Data & Models",
+      "description": "Defines the core data structures and configuration settings for the entire application.",
+      "nodeIds": [
+        "file:backend/models/lead.py",
+        "file:backend/config.py"
+      ]
+    },
+    {
+      "id": "layer:frontend-dashboard",
+      "name": "Frontend Dashboard",
+      "description": "The user interface for managing leads, starting searches, and viewing outreach campaigns.",
+      "nodeIds": [
+        "file:frontend/app/page.tsx",
+        "file:frontend/lib/api.ts"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "Entry Point",
+      "description": "Start here to see how the FastAPI application is initialized and where the routers are mounted.",
+      "nodeIds": ["file:backend/main.py"]
+    },
+    {
+      "order": 2,
+      "title": "Pipeline Orchestration",
+      "description": "This router coordinates the entire lead generation flow, calling discovery, scraping, and analysis in sequence.",
+      "nodeIds": ["file:backend/routers/search.py"]
+    },
+    {
+      "order": 3,
+      "title": "Business Discovery",
+      "description": "The discovery agent uses Google Places to find local businesses that meet our 'offline' criteria.",
+      "nodeIds": ["file:backend/agents/discovery_agent.py"]
+    },
+    {
+      "order": 4,
+      "title": "Data Enrichment",
+      "description": "Once a business is found, the scraper agent deep-dives into the web to find contact info and social profiles.",
+      "nodeIds": ["file:backend/agents/scraper_agent.py"]
+    },
+    {
+      "order": 5,
+      "title": "AI Gap Analysis",
+      "description": "Gemini AI analyzes the gathered data to identify specific business problems and calculate an opportunity score.",
+      "nodeIds": ["file:backend/agents/analyzer_agent.py"]
+    },
+    {
+      "order": 6,
+      "title": "Personalized Outreach",
+      "description": "Finally, the outreach agent generates a custom email tailored to the business's specific needs and weaknesses.",
+      "nodeIds": ["file:backend/agents/outreach_agent.py"]
+    }
+  ]
+}

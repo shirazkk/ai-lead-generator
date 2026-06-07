@@ -17,8 +17,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [stats, setStats] = useState({
     total: 0,
     avgScore: 0,
@@ -61,8 +60,7 @@ export default function Home() {
   const handleSearch = async (request: SearchRequest) => {
     setSearching(true);
     setError(null);
-    setCurrentStep(0);
-    setCompletedSteps([]);
+    setActiveJobId(null);
 
     try {
       const result = await searchLeads(request);
@@ -70,41 +68,27 @@ export default function Home() {
         throw new Error('Failed to initiate search');
       }
 
-      const job_id = result.job_id;
-      const eventSource = new EventSource(`http://localhost:8000/api/status/${job_id}/stream`);
+      setActiveJobId(result.job_id);
+
+      // Poll for completion — AgentProgress owns the SSE UI, we just reload leads when done
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const eventSource = new EventSource(`${API_BASE_URL}/api/status/${result.job_id}/stream`);
 
       eventSource.addEventListener('progress', (event) => {
         const data = JSON.parse(event.data);
-        
-        // Map agent status to steps
-        const agentSteps = ['discovery', 'scraper', 'analyzer', 'outreach'];
-        
-        const completed: number[] = [];
-        let current = 0;
-
-        agentSteps.forEach((agent, index) => {
-          const agentStatus = data.agents[agent];
-          if (agentStatus.status === 'completed') {
-            completed.push(index);
-          } else if (agentStatus.status === 'running') {
-            current = index;
-          }
-        });
-
-        setCurrentStep(current);
-        setCompletedSteps(completed);
-
         if (data.status === 'completed') {
           eventSource.close();
-          if (result.leads) {
-            setLeads((prevLeads) => [...result.leads!, ...prevLeads]);
-          }
-          
-          setTimeout(() => {
+          setTimeout(async () => {
             setSearching(false);
-            setCurrentStep(0);
-            setCompletedSteps([]);
-          }, 1000);
+            setActiveJobId(null);
+            // Reload leads from DB to pick up the new ones
+            try {
+              const freshLeads = await getLeads();
+              setLeads(freshLeads);
+            } catch {
+              setError('Pipeline finished but failed to refresh leads.');
+            }
+          }, 1200);
         }
       });
 
@@ -112,6 +96,7 @@ export default function Home() {
         eventSource.close();
         setError('Error during real-time progress tracking');
         setSearching(false);
+        setActiveJobId(null);
       };
 
     } catch (err) {
@@ -201,7 +186,7 @@ export default function Home() {
 
         <SearchForm onSubmit={handleSearch} />
 
-        {searching && <AgentProgress currentStep={currentStep} completedSteps={completedSteps} />}
+        {searching && activeJobId && <AgentProgress jobId={activeJobId} />}
 
         <StatsBar total={stats.total} avgScore={stats.avgScore} highScoreCount={stats.highScoreCount} />
 

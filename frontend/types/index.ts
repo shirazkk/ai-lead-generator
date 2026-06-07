@@ -40,6 +40,7 @@ export interface SearchRequest {
 
 export interface SearchResponse {
   success: boolean;
+  job_id: string;
   leads: Lead[];
   stats: {
     total: number;

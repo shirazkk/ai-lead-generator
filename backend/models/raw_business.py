@@ -46,10 +46,13 @@ class RawBusiness(BaseModel):
         description="Physical address of the business",
         min_length=1
     )
-    phone: str = Field(
-        ...,
-        description="Contact phone number",
-        min_length=1
+    city: Optional[str] = Field(
+        None,
+        description="City where business is located"
+    )
+    phone: Optional[str] = Field(
+        None,
+        description="Contact phone number"
     )
     website: Optional[str] = Field(
         None,
