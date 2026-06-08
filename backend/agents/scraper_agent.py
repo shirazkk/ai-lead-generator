@@ -2,6 +2,7 @@ import logging
 from typing import Optional, List
 from services.firecrawl_service import scrape_url
 from models import RawBusiness, EnrichedBusiness
+from services.firecrawl_service import search_business_urls
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,6 @@ async def enrich_business(raw_business: RawBusiness) -> EnrichedBusiness:
     social_urls = raw_business.social_urls or []
 
     if not yelp_url or not social_urls:
-        from services.firecrawl_service import search_business_urls
         found_urls = await search_business_urls(raw_business.business_name, raw_business.city or "")
         if not yelp_url and found_urls.get("yelp_url"):
             yelp_url = found_urls["yelp_url"]

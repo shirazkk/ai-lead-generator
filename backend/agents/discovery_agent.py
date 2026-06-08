@@ -19,9 +19,11 @@ def extract_business(place: dict, city: str, business_type: str) -> Optional[Raw
     address = place.get("formattedAddress", "")
     phone = place.get("nationalPhoneNumber") or place.get("internationalPhoneNumber")
     rating = place.get("rating")
+    reviews = place.get("reviews", [])
     maps_url = place.get("googleMapsUri", "")
     place_id = place.get("id", "")
     description = place.get("editorialSummary", {}).get("text", "")
+
 
     if not name or not address:
         return None
@@ -43,11 +45,17 @@ def extract_business(place: dict, city: str, business_type: str) -> Optional[Raw
         google_maps_url=maps_url,
         place_id=place_id,
         rating=rating,
+        yelp_url=None,
+        social_urls=[],
+        description=description,
+        reviews=reviews,
         website_status="none",
+        website=None
+        
     )
 
 async def discover_businesses(city: str, business_type: str, count: int) -> List[RawBusiness]:
-    all_businesses = []
+    all_businesses: List[RawBusiness] = []
     seen_place_ids = set()
     
     # Fetch neighborhoods dynamically from open-source Nominatim API

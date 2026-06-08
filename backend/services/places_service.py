@@ -101,13 +101,13 @@ async def fetch_neighbourhoods(city: str) -> List[str]:
         logger.info(f"[neighbourhoods] Returning cached result for: {city}")
         return NEIGHBOURHOODS_CACHE[city_lower]
 
-    # Strategy 1 — Overpass
-    logger.info(f"[neighbourhoods] Strategy 1: Overpass API for '{city}'")
-    result = await _fetch_overpass(city)
-    if result:
-        logger.info(f"[neighbourhoods] Overpass succeeded: {len(result)} neighbourhoods")
-        NEIGHBOURHOODS_CACHE[city_lower] = result
-        return result
+    # # Strategy 1 — Overpass
+    # logger.info(f"[neighbourhoods] Strategy 1: Overpass API for '{city}'")
+    # result = await _fetch_overpass(city)
+    # if result:
+    #     logger.info(f"[neighbourhoods] Overpass succeeded: {len(result)} neighbourhoods")
+    #     NEIGHBOURHOODS_CACHE[city_lower] = result
+    #     return result
 
     # Strategy 2 — Nominatim
     logger.info(f"[neighbourhoods] Strategy 2: Nominatim API for '{city}'")
@@ -134,58 +134,58 @@ async def fetch_neighbourhoods(city: str) -> List[str]:
     return []
 
 
-# ================================================================== #
-# Strategy 1 — Overpass                                              #
-# ================================================================== #
+# # ================================================================== #
+# # Strategy 1 — Overpass                                              #
+# # ================================================================== #
 
-async def _fetch_overpass(city: str) -> List[str]:
-    """
-    Query OpenStreetMap Overpass API for neighbourhood nodes/ways.
+# async def _fetch_overpass(city: str) -> List[str]:
+#     """
+#     Query OpenStreetMap Overpass API for neighbourhood nodes/ways.
 
-    Covers: suburb, neighbourhood, quarter, city_district, borough.
-    Uses case-insensitive city name match and admin_level 4-8.
-    Prefers English names (name:en) over local script names.
-    """
-    try:
-        # FIX: removed quotes around i flag for case-insensitive matching
-        query = f"""[out:json][timeout:25];
-area["name"~"^{city}$",i]["admin_level"~"^(4|5|6|7|8)$"]->.a;
-(
-  node(area.a)["place"~"^(suburb|neighbourhood|quarter|city_district|borough)$"];
-  way(area.a)["place"~"^(suburb|neighbourhood|quarter|city_district|borough)$"];
-);
-out tags;"""
+#     Covers: suburb, neighbourhood, quarter, city_district, borough.
+#     Uses case-insensitive city name match and admin_level 4-8.
+#     Prefers English names (name:en) over local script names.
+#     """
+#     try:
+#         # FIX: removed quotes around i flag for case-insensitive matching
+#         query = f"""[out:json][timeout:25];
+# area["name"~"^{city}$",i]["admin_level"~"^(4|5|6|7|8)$"]->.a;
+# (
+#   node(area.a)["place"~"^(suburb|neighbourhood|quarter|city_district|borough)$"];
+#   way(area.a)["place"~"^(suburb|neighbourhood|quarter|city_district|borough)$"];
+# );
+# out tags;"""
 
-        headers = {
-            "User-Agent": "AILeadGen/1.0 (Contact: shirazkk8@gmail.com)",
-            "Content-Type": "application/x-www-form-urlencoded",
-        }
+#         headers = {
+#             "User-Agent": "AILeadGen/1.0 (Contact: shirazkk8@gmail.com)",
+#             "Content-Type": "application/x-www-form-urlencoded",
+#         }
 
-        # Simple retry mechanism
-        for i in range(3):
-            try:
-                async with httpx.AsyncClient(timeout=45) as client:
-                    response = await client.post(
-                        "https://overpass-api.de/api/interpreter",
-                        data={"data": query},
-                        headers=headers,
-                    )
-                    # 429 Too Many Requests, 503 Service Unavailable, 504 Gateway Timeout
-                    if response.status_code in [429, 503, 504]:
-                        await asyncio.sleep(2 ** i)
-                        continue
+#         # Simple retry mechanism
+#         for i in range(3):
+#             try:
+#                 async with httpx.AsyncClient(timeout=45) as client:
+#                     response = await client.post(
+#                         "https://overpass-api.de/api/interpreter",
+#                         data={"data": query},
+#                         headers=headers,
+#                     )
+#                     # 429 Too Many Requests, 503 Service Unavailable, 504 Gateway Timeout
+#                     if response.status_code in [429, 503, 504]:
+#                         await asyncio.sleep(2 ** i)
+#                         continue
                     
-                    response.raise_for_status()
-                    data = response.json()
-                    return _extract_names(data.get("elements", []))
-            except httpx.HTTPError as e:
-                if i == 2: raise e
-                await asyncio.sleep(2 ** i)
-        return []
+#                     response.raise_for_status()
+#                     data = response.json()
+#                     return _extract_names(data.get("elements", []))
+#             except httpx.HTTPError as e:
+#                 if i == 2: raise e
+#                 await asyncio.sleep(2 ** i)
+#         return []
 
-    except Exception as e:
-        logger.warning(f"[overpass] Failed for '{city}': {e}")
-        return []
+#     except Exception as e:
+#         logger.warning(f"[overpass] Failed for '{city}': {e}")
+#         return []
 
 
 # ================================================================== #

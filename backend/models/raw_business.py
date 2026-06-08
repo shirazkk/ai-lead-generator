@@ -41,6 +41,10 @@ class RawBusiness(BaseModel):
         default="unknown",
         description="Type/category of business"
     )
+    description: Optional[str] = Field(
+        None,
+        description="Brief description or summary of the business"
+    )
     address: str = Field(
         ...,
         description="Physical address of the business",
@@ -63,6 +67,10 @@ class RawBusiness(BaseModel):
         description="Google Maps rating (0-5 scale)",
         ge=0.0,
         le=5.0
+    )
+    reviews: List[dict] = Field(
+        default_factory=list,
+        description="List of reviews from Google Maps"
     )
     google_maps_url: Optional[str] = Field(
         None,
