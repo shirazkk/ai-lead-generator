@@ -7,10 +7,11 @@ leads stored in the database.
 
 import logging
 from typing import Dict, Any, List, Optional
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, Depends
 from pydantic import BaseModel, Field
 
 from services.supabase_service import SupabaseService
+from services.auth_service import get_current_user
 from models.lead import Lead
 from models.outreach import Outreach
 
@@ -70,7 +71,8 @@ async def list_leads(
     offset: int = Query(0, ge=0, description="Number of leads to skip for pagination"),
     city: Optional[str] = Query(None, description="Filter by city (exact match)"),
     min_score: Optional[int] = Query(None, ge=1, le=10, description="Minimum opportunity score"),
-    max_score: Optional[int] = Query(None, ge=1, le=10, description="Maximum opportunity score")
+    max_score: Optional[int] = Query(None, ge=1, le=10, description="Maximum opportunity score"),
+    current_user_id: str = Depends(get_current_user)
 ) -> LeadsListResponse:
     """
     Get paginated list of leads with optional filters.
@@ -94,7 +96,7 @@ async def list_leads(
         HTTPException: If database query fails
     """
     logger.info(
-        f"Fetching leads: limit={limit}, offset={offset}, "
+        f"Fetching leads for user {current_user_id}: limit={limit}, offset={offset}, "
         f"city={city}, min_score={min_score}, max_score={max_score}"
     )
 
@@ -104,12 +106,13 @@ async def list_leads(
         if city:
             filters["city"] = city
         if min_score is not None:
-            filters["min_score"] = min_score
+            filters["min_score"] = str(min_score)
         if max_score is not None:
-            filters["max_score"] = max_score
+            filters["max_score"] = str(max_score)
 
         # Query database
         lead_dicts = await db.get_leads(
+            user_id=current_user_id,
             limit=limit,
             offset=offset,
             filters=filters if filters else None
@@ -146,7 +149,10 @@ async def list_leads(
     summary="Get single lead with outreach",
     description="Retrieve detailed information for a specific lead including associated outreach"
 )
-async def get_lead(lead_id: str) -> LeadDetailResponse:
+async def get_lead(
+    lead_id: str,
+    current_user_id: str = Depends(get_current_user)
+) -> LeadDetailResponse:
     """
     Get single lead by ID with associated outreach email.
 
@@ -159,11 +165,11 @@ async def get_lead(lead_id: str) -> LeadDetailResponse:
     Raises:
         HTTPException: If lead not found or database error
     """
-    logger.info(f"Fetching lead: {lead_id}")
+    logger.info(f"Fetching lead: {lead_id} (User: {current_user_id})")
 
     try:
         # Fetch lead from database
-        lead_dict = await db.get_lead(lead_id)
+        lead_dict = await db.get_lead(lead_id, user_id=current_user_id)
 
         if not lead_dict:
             logger.warning(f"Lead not found: {lead_id}")
@@ -180,7 +186,7 @@ async def get_lead(lead_id: str) -> LeadDetailResponse:
         lead = Lead(**lead_dict)
 
         # Fetch associated outreach
-        outreach_dict = await db.get_outreach_by_lead(lead_id)
+        outreach_dict = await db.get_outreach_by_lead(lead_id, user_id=current_user_id)
         outreach = Outreach(**outreach_dict) if outreach_dict else None
 
         logger.info(
@@ -217,7 +223,10 @@ async def get_lead(lead_id: str) -> LeadDetailResponse:
     summary="Delete lead",
     description="Delete a lead and its associated outreach records (cascading delete)"
 )
-async def delete_lead(lead_id: str) -> DeleteLeadResponse:
+async def delete_lead(
+    lead_id: str,
+    current_user_id: str = Depends(get_current_user)
+) -> DeleteLeadResponse:
     """
     Delete a lead by ID.
 
@@ -233,11 +242,11 @@ async def delete_lead(lead_id: str) -> DeleteLeadResponse:
     Raises:
         HTTPException: If lead not found or database error
     """
-    logger.info(f"Deleting lead: {lead_id}")
+    logger.info(f"Deleting lead: {lead_id} (User: {current_user_id})")
 
     try:
         # Check if lead exists first
-        lead_dict = await db.get_lead(lead_id)
+        lead_dict = await db.get_lead(lead_id, user_id=current_user_id)
 
         if not lead_dict:
             logger.warning(f"Lead not found for deletion: {lead_id}")
@@ -253,7 +262,7 @@ async def delete_lead(lead_id: str) -> DeleteLeadResponse:
         business_name = lead_dict.get("business_name", "Unknown")
 
         # Perform deletion (cascades to outreach)
-        deleted = await db.delete_lead(lead_id)
+        deleted = await db.delete_lead(lead_id, user_id=current_user_id)
 
         if not deleted:
             logger.error(f"Delete operation failed for lead: {lead_id}")

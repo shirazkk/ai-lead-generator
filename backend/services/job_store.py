@@ -10,8 +10,16 @@ import asyncio
 _job_store: Dict[str, Dict[str, Any]] = {}
 _job_locks: Dict[str, asyncio.Lock] = {}
 
-def get_job_status(job_id: str) -> Optional[Dict[str, Any]]:
-    return _job_store.get(job_id)
+def get_job_status(job_id: str, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    job = _job_store.get(job_id)
+    if not job:
+        return None
+    
+    # If user_id is provided, verify ownership
+    if user_id and job.get("user_id") != user_id:
+        return None
+        
+    return job
 
 async def update_job_status(job_id: str, status_update: Dict[str, Any]):
     if job_id not in _job_locks:
@@ -22,9 +30,10 @@ async def update_job_status(job_id: str, status_update: Dict[str, Any]):
             _job_store[job_id] = {}
         _job_store[job_id].update(status_update)
 
-def initialize_job(job_id: str, total_businesses: int):
+def initialize_job(job_id: str, total_businesses: int, user_id: str):
     _job_store[job_id] = {
         "job_id": job_id,
+        "user_id": user_id,  # Store ownership
         "status": "running",
         "total_businesses": total_businesses,
         "processed": 0,

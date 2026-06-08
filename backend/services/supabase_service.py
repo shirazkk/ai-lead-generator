@@ -35,24 +35,29 @@ class SupabaseService:
         )
         logger.info("SupabaseService initialized successfully")
 
+    def _get_client_for_user(self, access_token: Optional[str] = None) -> Client:
+        """Returns a client authenticated with the user's JWT if provided."""
+        if access_token:
+            # Create a temporary client or set session
+            # Note: For simplicity and thread-safety in this app, 
+            # we create a dedicated client for this user session.
+            client = create_client(settings.supabase_url, settings.supabase_key)
+            client.auth.set_session(access_token=access_token, refresh_token="")
+            return client
+        return self.client
+
     # Lead Operations
 
-    async def create_lead(self, lead_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_lead(self, lead_data: Dict[str, Any], user_id: str, access_token: str) -> Dict[str, Any]:
         """
-        Insert a new lead into the database.
-
-        Args:
-            lead_data: Dictionary containing lead fields (name, email, company, etc.)
-
-        Returns:
-            Created lead record with generated ID and timestamps
-
-        Raises:
-            APIError: If database insertion fails
+        Insert a new lead into the database, using authenticated client.
         """
         try:
             business_name = lead_data.get('business_name') or "Unknown Business"
-            logger.info(f"Creating lead for business: {business_name}")
+            logger.info(f"Creating lead for business: {business_name} (User: {user_id})")
+            
+            # Add user_id to the data
+            lead_data['user_id'] = user_id
             
             # Convert datetime objects to ISO strings for JSON serialization
             serialized_data = {
@@ -60,8 +65,10 @@ class SupabaseService:
                 for k, v in lead_data.items()
             }
             
+            client = self._get_client_for_user(access_token)
+            
             result = await asyncio.to_thread(
-                lambda: self.client.table("leads").insert(serialized_data).execute()
+                lambda: client.table("leads").insert(serialized_data).execute()
             )
             
             if not result.data:
@@ -73,25 +80,30 @@ class SupabaseService:
             logger.error(f"Failed to create lead: {e}")
             raise
 
-    async def get_lead(self, lead_id: str) -> Optional[Dict[str, Any]]:
+    async def get_lead(self, lead_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         """
-        Retrieve a single lead by ID.
+        Retrieve a single lead by ID, scoped to user.
 
         Args:
             lead_id: UUID of the lead
+            user_id: UUID of the owner user
 
         Returns:
             Lead record or None if not found
         """
         try:
-            logger.info(f"Fetching lead: {lead_id}")
+            logger.info(f"Fetching lead: {lead_id} (User: {user_id})")
             result = await asyncio.to_thread(
-                lambda: self.client.table("leads").select("*").eq("id", lead_id).execute()
+                lambda: self.client.table("leads")
+                .select("*")
+                .eq("id", lead_id)
+                .eq("user_id", user_id)
+                .execute()
             )
             if result.data:
                 logger.info(f"Lead found: {lead_id}")
                 return result.data[0]
-            logger.warning(f"Lead not found: {lead_id}")
+            logger.warning(f"Lead not found or access denied: {lead_id}")
             return None
         except APIError as e:
             logger.error(f"Failed to get lead {lead_id}: {e}")
@@ -99,14 +111,16 @@ class SupabaseService:
 
     async def get_leads(
         self,
+        user_id: str,
         limit: int = 50,
         offset: int = 0,
         filters: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
         """
-        Get paginated list of leads with optional filters.
+        Get paginated list of leads scoped to user.
 
         Args:
+            user_id: UUID of the owner user
             limit: Maximum number of records to return (default 50)
             offset: Number of records to skip (default 0)
             filters: Optional filters (city, min_score, max_score)
@@ -115,9 +129,9 @@ class SupabaseService:
             List of lead records
         """
         try:
-            logger.info(f"Fetching leads: limit={limit}, offset={offset}, filters={filters}")
+            logger.info(f"Fetching leads for user {user_id}: limit={limit}, offset={offset}, filters={filters}")
 
-            query = self.client.table("leads").select("*")
+            query = self.client.table("leads").select("*").eq("user_id", user_id)
 
             # Apply filters if provided
             if filters:
@@ -138,13 +152,14 @@ class SupabaseService:
             logger.error(f"Failed to get leads: {e}")
             return []
 
-    async def update_lead(self, lead_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
+    async def update_lead(self, lead_id: str, updates: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         """
-        Update lead fields.
+        Update lead fields scoped to user.
 
         Args:
             lead_id: UUID of the lead
             updates: Dictionary of fields to update
+            user_id: UUID of the owner user
 
         Returns:
             Updated lead record
@@ -153,37 +168,46 @@ class SupabaseService:
             APIError: If update fails or lead not found
         """
         try:
-            logger.info(f"Updating lead {lead_id}: {updates}")
+            logger.info(f"Updating lead {lead_id} for user {user_id}: {updates}")
             result = await asyncio.to_thread(
-                lambda: self.client.table("leads").update(updates).eq("id", lead_id).execute()
+                lambda: self.client.table("leads")
+                .update(updates)
+                .eq("id", lead_id)
+                .eq("user_id", user_id)
+                .execute()
             )
             if result.data:
                 logger.info(f"Lead updated successfully: {lead_id}")
                 return result.data[0]
-            raise APIError(f"Lead not found: {lead_id}")
+            raise APIError({"message": f"Lead not found or access denied: {lead_id}", "code": "NOT_FOUND"})
         except APIError as e:
             logger.error(f"Failed to update lead {lead_id}: {e}")
             raise
 
-    async def delete_lead(self, lead_id: str) -> bool:
+    async def delete_lead(self, lead_id: str, user_id: str) -> bool:
         """
-        Delete a lead (cascades to outreach records).
+        Delete a lead scoped to user.
 
         Args:
             lead_id: UUID of the lead
+            user_id: UUID of the owner user
 
         Returns:
             True if deleted, False if not found
         """
         try:
-            logger.info(f"Deleting lead: {lead_id}")
+            logger.info(f"Deleting lead: {lead_id} (User: {user_id})")
             result = await asyncio.to_thread(
-                lambda: self.client.table("leads").delete().eq("id", lead_id).execute()
+                lambda: self.client.table("leads")
+                .delete()
+                .eq("id", lead_id)
+                .eq("user_id", user_id)
+                .execute()
             )
             if result.data:
                 logger.info(f"Lead deleted successfully: {lead_id}")
                 return True
-            logger.warning(f"Lead not found for deletion: {lead_id}")
+            logger.warning(f"Lead not found or access denied for deletion: {lead_id}")
             return False
         except APIError as e:
             logger.error(f"Failed to delete lead {lead_id}: {e}")
@@ -191,12 +215,13 @@ class SupabaseService:
 
     # Outreach Operations
 
-    async def create_outreach(self, outreach_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_outreach(self, outreach_data: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         """
-        Insert a new outreach record.
+        Insert a new outreach record scoped to user.
 
         Args:
             outreach_data: Dictionary with lead_id, template, and message fields
+            user_id: UUID of the owner user
 
         Returns:
             Created outreach record
@@ -205,8 +230,10 @@ class SupabaseService:
             APIError: If insertion fails
         """
         try:
-            logger.info(f"Creating outreach for lead: {outreach_data.get('lead_id', 'N/A')}")
-            logger.debug(f"Outreach payload: {outreach_data}")
+            logger.info(f"Creating outreach for user {user_id}, lead: {outreach_data.get('lead_id', 'N/A')}")
+            
+            # Add user_id to data
+            outreach_data['user_id'] = user_id
             
             # Convert datetime objects to ISO strings for JSON serialization
             serialized_data = {
@@ -218,10 +245,7 @@ class SupabaseService:
                 lambda: self.client.table("outreach").insert(serialized_data).execute()
             )
             
-            logger.debug(f"Supabase response for create_outreach: {result}")
             if not result.data:
-                # If result.data is empty, it might mean the insert failed without raising an APIError
-                logger.error(f"Insert outreach returned no data. Result: {result}")
                 raise APIError({"message": "No data returned after creating outreach", "code": "NO_DATA"})
             
             logger.info(f"Outreach created successfully: {result.data[0]['id']}")
@@ -230,62 +254,68 @@ class SupabaseService:
             logger.error(f"Failed to create outreach: {e}")
             raise
 
-    async def get_outreach_by_id(self, outreach_id: str) -> Optional[Dict[str, Any]]:
+    async def get_outreach_by_id(self, outreach_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         """
-        Get outreach record by outreach ID.
+        Get outreach record by outreach ID scoped to user.
 
         Args:
             outreach_id: UUID of the outreach record
+            user_id: UUID of the owner user
 
         Returns:
             Outreach record or None if not found
         """
         try:
-            logger.info(f"Fetching outreach by ID: {outreach_id}")
+            logger.info(f"Fetching outreach {outreach_id} for user {user_id}")
             result = await asyncio.to_thread(
-                lambda: self.client.table("outreach").select("*").eq("id", outreach_id).execute()
+                lambda: self.client.table("outreach")
+                .select("*")
+                .eq("id", outreach_id)
+                .eq("user_id", user_id)
+                .execute()
             )
             if result.data:
-                logger.info(f"Outreach found: {outreach_id}")
                 return result.data[0]
-            logger.warning(f"Outreach not found: {outreach_id}")
             return None
         except APIError as e:
             logger.error(f"Failed to get outreach {outreach_id}: {e}")
             return None
 
-    async def get_outreach_by_lead(self, lead_id: str) -> Optional[Dict[str, Any]]:
+    async def get_outreach_by_lead(self, lead_id: str, user_id: str) -> Optional[Dict[str, Any]]:
         """
-        Get outreach record for a specific lead.
+        Get outreach record for a lead scoped to user.
 
         Args:
             lead_id: UUID of the lead
+            user_id: UUID of the owner user
 
         Returns:
             Outreach record or None if not found
         """
         try:
-            logger.info(f"Fetching outreach for lead: {lead_id}")
+            logger.info(f"Fetching outreach for lead {lead_id} (User: {user_id})")
             result = await asyncio.to_thread(
-                lambda: self.client.table("outreach").select("*").eq("lead_id", lead_id).execute()
+                lambda: self.client.table("outreach")
+                .select("*")
+                .eq("lead_id", lead_id)
+                .eq("user_id", user_id)
+                .execute()
             )
-            logger.debug(f"Supabase response for outreach lead {lead_id}: {result.data}")
             if result.data:
-                logger.info(f"Outreach found for lead: {lead_id}")
                 return result.data[0]
-            logger.warning(f"No outreach found for lead: {lead_id}")
             return None
         except APIError as e:
             logger.error(f"Failed to get outreach for lead {lead_id}: {e}")
             return None
 
-    async def update_outreach(self, outreach_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
+    async def update_outreach(self, outreach_id: str, updates: Dict[str, Any], user_id: str) -> Dict[str, Any]:
         """
-        Update outreach record fields.
+        Update outreach record fields scoped to user.
 
         Args:
             outreach_id: UUID of the outreach record
             updates: Dictionary of fields to update
+            user_id: UUID of the owner user
 
         Returns:
             Updated outreach record
@@ -294,24 +324,29 @@ class SupabaseService:
             APIError: If update fails
         """
         try:
-            logger.info(f"Updating outreach {outreach_id}: {updates}")
+            logger.info(f"Updating outreach {outreach_id} for user {user_id}: {updates}")
             result = await asyncio.to_thread(
-                lambda: self.client.table("outreach").update(updates).eq("id", outreach_id).execute()
+                lambda: self.client.table("outreach")
+                .update(updates)
+                .eq("id", outreach_id)
+                .eq("user_id", user_id)
+                .execute()
             )
             if result.data:
                 logger.info(f"Outreach updated successfully: {outreach_id}")
                 return result.data[0]
-            raise APIError(f"Outreach not found: {outreach_id}")
+            raise APIError({"message": f"Outreach not found or access denied: {outreach_id}", "code": "NOT_FOUND"})
         except APIError as e:
             logger.error(f"Failed to update outreach {outreach_id}: {e}")
             raise
 
-    async def mark_outreach_sent(self, outreach_id: str) -> Dict[str, Any]:
+    async def mark_outreach_sent(self, outreach_id: str, user_id: str) -> Dict[str, Any]:
         """
-        Mark outreach as sent with current timestamp.
+        Mark outreach as sent with current timestamp scoped to user.
 
         Args:
             outreach_id: UUID of the outreach record
+            user_id: UUID of the owner user
 
         Returns:
             Updated outreach record with sent=True and sent_at timestamp
@@ -320,7 +355,7 @@ class SupabaseService:
             "sent": True,
             "sent_at": datetime.now(timezone.utc).isoformat()
         }
-        return await self.update_outreach(outreach_id, updates)
+        return await self.update_outreach(outreach_id, updates, user_id=user_id)
 
     # Query Operations
 

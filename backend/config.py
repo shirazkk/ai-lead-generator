@@ -7,7 +7,7 @@ with strong typing and automatic validation on application startup.
 
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -16,8 +16,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 current_dir = Path(__file__).parent
 # Go up one level to the root directory
 # backend/ -> root/
-root_dir = current_dir.parent
-env_file_path = root_dir / ".env"
+env_file_path = current_dir / ".env"
 
 class Settings(BaseSettings):
     """
@@ -72,6 +71,21 @@ class Settings(BaseSettings):
     supabase_key: str = Field(
         ...,
         description="Supabase anonymous/service role key"
+    )
+
+    supabase_jwt_secret: str = Field(
+        ...,
+        description="Supabase JWT Secret for token verification"
+    )
+
+    supabase_jwt_public_key: Optional[str] = Field(
+        None,
+        description="Supabase JWT Public Key (PEM format)"
+    )
+
+    supabase_jwks: Optional[str] = Field(
+        None,
+        description="Supabase JWKS JSON string for ES256 verification"
     )
 
     # Email Service
@@ -136,4 +150,4 @@ class Settings(BaseSettings):
 # Global settings instance
 # This will be initialized once and imported throughout the application
 # type: ignore - pydantic-settings loads from environment automatically
-settings = Settings()  # type: ignore[call-arg]
+settings = Settings()  # type: ignore

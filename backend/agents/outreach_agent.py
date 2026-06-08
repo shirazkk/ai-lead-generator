@@ -20,7 +20,7 @@ async def generate_outreach(
     lead_data: Dict[str, Any],
     analysis: Dict[str, Any],
     tone: Optional[str] = None,
-    gemini: LLMService = None
+    gemini: Optional[LLMService] = None
 ) -> Outreach:
     """
     Generate personalized cold email outreach for a qualified lead.

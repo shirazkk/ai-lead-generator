@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 # --- Base Interface ---
 class BaseLLMProvider(ABC):
+    # Semaphore to limit concurrent calls
+    semaphore = asyncio.Semaphore(5)
+
     @abstractmethod
     async def analyze_lead(self, business_data: Dict[str, Any], prompt: Optional[str] = None) -> Dict[str, Any]:
         """Analyze a business lead."""
@@ -31,15 +34,24 @@ class BaseLLMProvider(ABC):
     ) -> Dict[str, Any]:
         """Shared retry logic for LLM calls."""
         for attempt in range(max_retries):
-            try:
-                logger.info(f"{operation_name}: Attempt {attempt + 1}/{max_retries}")
-                return await self._execute_generation(**kwargs)
-            except Exception as e:
-                logger.warning(f"{operation_name}: Attempt {attempt + 1} failed: {e}")
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(2 ** attempt)
-                else:
-                    raise Exception(f"{operation_name} failed after {max_retries} attempts: {e}")
+            async with self.semaphore:
+                try:
+                    logger.info(f"{operation_name}: Attempt {attempt + 1}/{max_retries}")
+                    return await self._execute_generation(**kwargs)
+                except httpx.HTTPStatusError as e:
+                    if e.response.status_code == 429:
+                        retry_after = e.response.headers.get("Retry-After")
+                        wait_time = int(retry_after) if retry_after and retry_after.isdigit() else (2 ** attempt)
+                        logger.warning(f"{operation_name}: 429 Too Many Requests. Retrying in {wait_time}s")
+                        await asyncio.sleep(wait_time)
+                        continue
+                    raise
+                except Exception as e:
+                    logger.warning(f"{operation_name}: Attempt {attempt + 1} failed: {e}")
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(2 ** attempt)
+                    else:
+                        raise Exception(f"{operation_name} failed after {max_retries} attempts: {e}")
         raise Exception("Unreachable")
 
     @abstractmethod

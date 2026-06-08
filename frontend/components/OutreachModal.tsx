@@ -34,12 +34,24 @@ export default function OutreachModal({
   );
 
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      setMounted(false);
+    };
+  }, []);
+
+  // Sync state with props - this is acceptable in useEffect when props change
+  useEffect(() => {
     if (outreach) {
-      setEditSubject(outreach.subject);
-      setEditMessage(outreach.message);
+      const timer = setTimeout(() => {
+        setEditSubject(outreach.subject);
+        setEditMessage(outreach.message);
+      }, 0);
+      return () => clearTimeout(timer);
     }
-    return () => setMounted(false);
   }, [outreach]);
 
   const handleSaveEdit = async () => {

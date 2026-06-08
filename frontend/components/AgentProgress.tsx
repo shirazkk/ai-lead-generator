@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { fetchEventSource } from '@microsoft/fetch-event-source';
+import { createClient } from '@/utils/supabase/client';
 
 interface AgentProgressProps {
   jobId: string;
@@ -8,8 +10,8 @@ interface AgentProgressProps {
 
 const STEPS = [
   { id: 0, name: 'Discovery', icon: '🔍' },
-  { id: 1, name: 'Scraper', icon: '🕷️' },
-  { id: 2, name: 'Analyzer', icon: '🧠' },
+  { id: 1, name: 'Scraping', icon: '🌐' },
+  { id: 2, name: 'Analysis', icon: '🧠' },
   { id: 3, name: 'Outreach', icon: '✉️' },
 ];
 
@@ -20,44 +22,53 @@ export default function AgentProgress({ jobId }: AgentProgressProps) {
   useEffect(() => {
     if (!jobId) return;
 
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const eventSource = new EventSource(`${API_BASE_URL}/api/status/${jobId}/stream`);
+    const controller = new AbortController();
 
-    eventSource.addEventListener('progress', (event) => {
-      const data = JSON.parse(event.data);
-      
-      if (data && data.agents) {
-        const agentSteps = ['discovery', 'scraper', 'analyzer', 'outreach'];
-        const completed: number[] = [];
-        let current = 0;
+    const startStreaming = async () => {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
 
-        agentSteps.forEach((agent, index) => {
-          const agentStatus = data.agents[agent];
-          if (agentStatus && agentStatus.status === 'completed') {
-            completed.push(index);
-          } else if (agentStatus && agentStatus.status === 'running') {
-            current = index;
+      await fetchEventSource(`${API_BASE_URL}/api/status/${jobId}/stream`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        signal: controller.signal,
+        onmessage(event) {
+          if (event.event === 'progress') {
+            const data = JSON.parse(event.data);
+            
+            if (data && data.agents) {
+              const agentSteps = ['discovery', 'scraper', 'analyzer', 'outreach'];
+              const completed: number[] = [];
+              let current = 0;
+
+              agentSteps.forEach((agent, index) => {
+                const agentStatus = data.agents[agent];
+                if (agentStatus && agentStatus.status === 'completed') {
+                  completed.push(index);
+                } else if (agentStatus && agentStatus.status === 'running') {
+                  current = index;
+                }
+              });
+
+              setCurrentStep(current);
+              setCompletedSteps(completed);
+            }
           }
-        });
-
-        setCurrentStep(current);
-        setCompletedSteps(completed);
-      } else {
-        if (data && typeof data.current_step === 'number') {
-          setCurrentStep(data.current_step);
+        },
+        onerror(err) {
+          console.error('SSE Error:', err);
+          throw err;
         }
-        if (data && Array.isArray(data.completed_steps)) {
-          setCompletedSteps(data.completed_steps);
-        }
-      }
-    });
-
-    eventSource.onerror = () => {
-      eventSource.close();
+      });
     };
 
+    startStreaming();
+
     return () => {
-      eventSource.close();
+      controller.abort();
     };
   }, [jobId]);
 

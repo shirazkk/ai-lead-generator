@@ -13,7 +13,7 @@ import logging
 import asyncio
 import uuid
 from typing import Dict, Any, List, Optional, Tuple
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, Field
 
 # Define semaphore for rate limiting
@@ -25,6 +25,7 @@ from agents.scraper_agent import enrich_business
 from agents.analyzer_agent import analyze_lead
 from agents.outreach_agent import generate_outreach
 from services.supabase_service import SupabaseService
+from services.auth_service import get_current_user
 from services.llm_service import LLMService
 from services.job_store import initialize_job, update_job_status, get_job_status, start_job_step, complete_job_step
 from models.lead import Lead
@@ -42,7 +43,7 @@ router = APIRouter(
 
 # Initialize services
 db = SupabaseService()
-gemini = LLMService(api_key=settings.gemini_api_key)
+gemini = LLMService(api_key=str(settings.openrouter_api_key))
 
 
 # Request/Response Models
@@ -88,7 +89,8 @@ class SearchResponse(BaseModel):
 async def _process_single_business(
     raw_business: RawBusiness,
     city: str,
-    job_id: str
+    job_id: str,
+    user_id: str
 ) -> Optional[Tuple[Lead, Outreach]]:
     """Helper to process a single business through the pipeline."""
     async with processing_semaphore:
@@ -109,7 +111,7 @@ async def _process_single_business(
                 business_type=enriched_business.business_type,
                 owner_name=enriched_business.owner_name,
                 email=enriched_business.email,
-                phone=enriched_business.phone,
+                phone=enriched_business.phone or "Unknown",
                 address=enriched_business.address,
                 city=enriched_business.city if enriched_business.city and enriched_business.city != "Unknown" else city,
                 country=enriched_business.country or "USA",
@@ -143,8 +145,8 @@ async def _process_single_business(
             await complete_job_step(job_id, "outreach_done", "outreach")
 
             # PHASE 5: Save to Supabase
-            await db.create_lead(lead.model_dump())
-            await db.create_outreach(outreach.model_dump())
+            await db.create_lead(lead.model_dump(), user_id=user_id)
+            await db.create_outreach(outreach.model_dump(), user_id=user_id)
             
             # Update progress
             status_data = get_job_status(job_id)
@@ -169,9 +171,12 @@ async def _process_single_business(
     summary="Discover and qualify leads",
     description="Orchestrates the full lead generation pipeline from discovery to outreach"
 )
-async def search_leads(request: SearchRequest) -> SearchResponse:
+async def search_leads(
+    request: SearchRequest,
+    current_user_id: str = Depends(get_current_user)
+) -> SearchResponse:
     logger.info(
-        f"Starting lead search: city={request.city}, "
+        f"Starting lead search for user {current_user_id}: city={request.city}, "
         f"type={request.business_type}, count={request.count}"
     )
 
@@ -187,15 +192,15 @@ async def search_leads(request: SearchRequest) -> SearchResponse:
         if not raw_businesses:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No leads found")
 
-        # Initialize job tracking
+        # Initialize job tracking with user ownership
         job_id = str(uuid.uuid4())
-        initialize_job(job_id, len(raw_businesses))
-        logger.info(f"Initialized job tracking: {job_id}")
+        initialize_job(job_id, len(raw_businesses), user_id=current_user_id)
+        logger.info(f"Initialized job tracking for user {current_user_id}: {job_id}")
 
         # PHASE 2-5: Parallel processing
         logger.info("Starting parallel pipeline processing")
         tasks = [
-            _process_single_business(raw_business, request.city, job_id)
+            _process_single_business(raw_business, request.city, job_id, current_user_id)
             for raw_business in raw_businesses
         ]
 

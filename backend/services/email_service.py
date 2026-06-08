@@ -27,10 +27,10 @@ async def send_email(to_email: str, subject: str, body: str) -> str:
         logger.info(f"Attempting to send email to {to_email}")
         
         params = {
-            "from": "onboarding@resend.dev",  # Using default for now, should be configured in settings later
+            "from": "onboarding@resend.dev",
             "to": to_email,
             "subject": subject,
-            "text": body,  # Using text for now.
+            "text": body,
         }
 
         response = await asyncio.to_thread(

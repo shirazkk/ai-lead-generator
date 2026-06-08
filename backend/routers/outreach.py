@@ -8,10 +8,11 @@ marking them as sent (email delivery integration pending).
 import logging
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, Field
 
 from services.supabase_service import SupabaseService
+from services.auth_service import get_current_user
 from services.email_service import send_email
 from agents.outreach_agent import generate_outreach
 from models.lead import Lead
@@ -56,16 +57,20 @@ class SendResponse(BaseModel):
     response_model=OutreachResponse,
     status_code=status.HTTP_200_OK,
     summary="Update outreach record",
-    description="Manually update subject and message of an outreach record"
+    description="Manually update subject and message of an outreach record scoped to user"
 )
-async def update_outreach(outreach_id: str, request: UpdateOutreachRequest) -> OutreachResponse:
+async def update_outreach(
+    outreach_id: str, 
+    request: UpdateOutreachRequest,
+    current_user_id: str = Depends(get_current_user)
+) -> OutreachResponse:
     """
-    Update outreach record.
+    Update outreach record scoped to user.
     """
-    logger.info(f"Updating outreach: {outreach_id}")
+    logger.info(f"Updating outreach: {outreach_id} for user {current_user_id}")
 
     try:
-        updated_dict = await db.update_outreach(outreach_id, request.model_dump())
+        updated_dict = await db.update_outreach(outreach_id, request.model_dump(), user_id=current_user_id)
         outreach = Outreach(**updated_dict)
         return OutreachResponse(success=True, data=outreach, error=None)
     except Exception as e:
@@ -76,24 +81,24 @@ async def update_outreach(outreach_id: str, request: UpdateOutreachRequest) -> O
         )
 
 
-    
-
-
 @router.get(
     "/{lead_id}",
     response_model=OutreachResponse,
     status_code=status.HTTP_200_OK,
     summary="Get outreach by lead ID",
-    description="Retrieve outreach record for a specific lead"
+    description="Retrieve outreach record for a specific lead scoped to user"
 )
-async def get_outreach(lead_id: str) -> OutreachResponse:
+async def get_outreach(
+    lead_id: str,
+    current_user_id: str = Depends(get_current_user)
+) -> OutreachResponse:
     """
-    Get outreach record for a lead.
+    Get outreach record for a lead scoped to user.
     """
-    logger.info(f"Fetching outreach for lead: {lead_id}")
+    logger.info(f"Fetching outreach for lead: {lead_id} (User: {current_user_id})")
 
     try:
-        outreach_dict = await db.get_outreach_by_lead(lead_id)
+        outreach_dict = await db.get_outreach_by_lead(lead_id, user_id=current_user_id)
 
         if not outreach_dict:
             logger.warning(f"Outreach not found for lead: {lead_id}")
@@ -127,33 +132,24 @@ async def get_outreach(lead_id: str) -> OutreachResponse:
     response_model=OutreachResponse,
     status_code=status.HTTP_200_OK,
     summary="Regenerate outreach email",
-    description="Generate a new personalized outreach email for an existing lead"
+    description="Generate a new personalized outreach email for an existing lead scoped to user"
 )
-async def regenerate_outreach(lead_id: str, tone: Optional[str] = None) -> OutreachResponse:
+async def regenerate_outreach(
+    lead_id: str, 
+    tone: Optional[str] = None,
+    current_user_id: str = Depends(get_current_user)
+) -> OutreachResponse:
     """
-    Regenerate outreach email for an existing lead.
-
-    This endpoint fetches the lead data, runs the Outreach Agent to generate
-    a new personalized email, and updates the existing outreach record (or
-    creates a new one if none exists).
-
-    Args:
-        lead_id: UUID of the lead to regenerate outreach for
-
-    Returns:
-        OutreachResponse with newly generated outreach data
-
-    Raises:
-        HTTPException: If lead not found or generation fails
+    Regenerate outreach email for an existing lead scoped to user.
     """
-    logger.info(f"Regenerating outreach for lead: {lead_id}")
+    logger.info(f"Regenerating outreach for lead: {lead_id} (User: {current_user_id})")
 
     try:
-        # Fetch lead from database
-        lead_dict = await db.get_lead(lead_id)
+        # Fetch lead from database scoped to user
+        lead_dict = await db.get_lead(lead_id, user_id=current_user_id)
 
         if not lead_dict:
-            logger.warning(f"Lead not found: {lead_id}")
+            logger.warning(f"Lead not found or access denied: {lead_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
@@ -165,8 +161,6 @@ async def regenerate_outreach(lead_id: str, tone: Optional[str] = None) -> Outre
 
         # Convert to Lead model
         lead = Lead(**lead_dict)
-
-        logger.info(f"Found lead: '{lead.business_name}'")
 
         # Prepare lead data for outreach agent
         lead_data = {
@@ -189,44 +183,33 @@ async def regenerate_outreach(lead_id: str, tone: Optional[str] = None) -> Outre
         }
 
         # Generate new outreach email
-        logger.info(f"Generating new outreach for '{lead.business_name}' with tone: {tone}")
         new_outreach = await generate_outreach(lead_data, analysis, tone=tone)
-
-        # Ensure lead_id is set correctly
         new_outreach.lead_id = lead_id
 
-        # Check if outreach already exists
-        existing_outreach = await db.get_outreach_by_lead(lead_id)
+        # Check if outreach already exists scoped to user
+        existing_outreach = await db.get_outreach_by_lead(lead_id, user_id=current_user_id)
 
         if existing_outreach:
-            # Update existing outreach record
-            logger.info(f"Updating existing outreach record: {existing_outreach['id']}")
-
             outreach_updates = {
                 "subject": new_outreach.subject,
                 "message": new_outreach.message,
                 "tone": new_outreach.tone,
                 "generated_at": new_outreach.generated_at.isoformat(),
-                "sent": False,  # Reset sent status
+                "sent": False,
                 "sent_at": None
             }
 
             updated_dict = await db.update_outreach(
                 existing_outreach["id"],
-                outreach_updates
+                outreach_updates,
+                user_id=current_user_id
             )
 
             final_outreach = Outreach(**updated_dict)
-            logger.info(f"Successfully updated outreach for '{lead.business_name}'")
         else:
-            # Create new outreach record
-            logger.info(f"Creating new outreach record for lead: {lead_id}")
-
             outreach_dict = new_outreach.model_dump()
-            created_dict = await db.create_outreach(outreach_dict)
-
+            created_dict = await db.create_outreach(outreach_dict, user_id=current_user_id)
             final_outreach = Outreach(**created_dict)
-            logger.info(f"Successfully created outreach for '{lead.business_name}'")
 
         return OutreachResponse(
             success=True,
@@ -235,18 +218,12 @@ async def regenerate_outreach(lead_id: str, tone: Optional[str] = None) -> Outre
         )
 
     except HTTPException:
-        # Re-raise HTTP exceptions as-is
         raise
-
     except Exception as e:
-        logger.error(f"Failed to regenerate outreach for lead {lead_id}: {e}", exc_info=True)
+        logger.error(f"Failed to regenerate outreach: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "type": "GENERATION_FAILED",
-                "message": "Failed to regenerate outreach email",
-                "details": {"error": str(e), "lead_id": lead_id}
-            }
+            detail={"message": "Failed to regenerate outreach email", "details": str(e)}
         )
 
 
@@ -255,75 +232,57 @@ async def regenerate_outreach(lead_id: str, tone: Optional[str] = None) -> Outre
     response_model=SendResponse,
     status_code=status.HTTP_200_OK,
     summary="Send outreach email",
-    description="Send an outreach email via Resend API and mark it as sent"
+    description="Send an outreach email via Resend API scoped to user"
 )
-async def send_outreach(outreach_id: str) -> SendResponse:
+async def send_outreach(
+    outreach_id: str,
+    current_user_id: str = Depends(get_current_user)
+) -> SendResponse:
     """
-    Send outreach email and mark as sent.
-
-    This endpoint fetches outreach and lead data, sends the email
-    using the Resend API, and updates the database upon success.
+    Send outreach email and mark as sent, scoped to user.
     """
-    logger.info(f"Sending outreach: {outreach_id}")
+    logger.info(f"Sending outreach: {outreach_id} (User: {current_user_id})")
 
     try:
-        # Fetch outreach record by ID
-        outreach_dict = await db.get_outreach_by_id(outreach_id)
+        # Fetch outreach record by ID scoped to user
+        outreach_dict = await db.get_outreach_by_id(outreach_id, user_id=current_user_id)
 
         if not outreach_dict:
-            logger.warning(f"Outreach not found: {outreach_id}")
+            logger.warning(f"Outreach not found or access denied: {outreach_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={
-                    "type": "OUTREACH_NOT_FOUND",
-                    "message": f"Outreach with ID '{outreach_id}' not found",
-                    "details": {"outreach_id": outreach_id}
-                }
+                detail={"message": "Outreach not found or access denied"}
             )
 
         # Check if already sent
         if outreach_dict.get("sent", False):
-            sent_at = outreach_dict.get("sent_at")
-            logger.warning(f"Outreach already sent: {outreach_id} at {sent_at}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "type": "ALREADY_SENT",
-                    "message": "Outreach email has already been sent",
-                    "details": {
-                        "outreach_id": outreach_id,
-                        "sent_at": sent_at
-                    }
-                }
+                detail={"message": "Outreach email has already been sent"}
             )
 
-        # Fetch lead to get the recipient email
-        lead_id = outreach_dict.get("lead_id")
-        lead_dict = await db.get_lead(lead_id)
+        # Fetch lead to get the recipient email scoped to user
+        lead_id = str(outreach_dict.get("lead_id"))
+        lead_dict = await db.get_lead(lead_id, user_id=current_user_id)
         if not lead_dict or not lead_dict.get("email"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "type": "MISSING_RECIPIENT",
-                    "message": "Lead email not found, cannot send outreach"
-                }
+                detail={"message": "Lead email not found"}
             )
         
         recipient_email = lead_dict["email"]
 
         # Send email via Resend
-        logger.info(f"Sending email to {recipient_email} for outreach {outreach_id}")
         await send_email(
             to_email=recipient_email,
             subject=outreach_dict["subject"],
             body=outreach_dict["message"]
         )
 
-        # Mark as sent with timestamp
-        updated_dict = await db.mark_outreach_sent(outreach_id)
+        # Mark as sent scoped to user
+        updated_dict = await db.mark_outreach_sent(outreach_id, user_id=current_user_id)
+        
         updated_outreach = Outreach(**updated_dict)
-
-        logger.info(f"Successfully sent and marked outreach as sent: {outreach_id}")
 
         return SendResponse(
             success=True,
@@ -333,16 +292,7 @@ async def send_outreach(outreach_id: str) -> SendResponse:
         )
 
     except HTTPException:
-        # Re-raise HTTP exceptions as-is
         raise
-
     except Exception as e:
-        logger.error(f"Failed to send outreach {outreach_id}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "type": "SEND_FAILED",
-                "message": "Failed to send outreach email",
-                "details": {"error": str(e), "outreach_id": outreach_id}
-            }
-        )
+        logger.error(f"Failed to send outreach: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

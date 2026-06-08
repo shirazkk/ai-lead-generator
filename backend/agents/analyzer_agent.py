@@ -7,7 +7,7 @@ specific problems that a website could solve.
 """
 
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from services.llm_service import LLMService
 from models import EnrichedBusiness
@@ -17,7 +17,7 @@ from prompts import ANALYZER_PROMPT
 logger = logging.getLogger(__name__)
 
 
-async def analyze_lead(enriched_business: EnrichedBusiness, gemini: LLMService = None) -> Dict[str, Any]:
+async def analyze_lead(enriched_business: EnrichedBusiness, gemini: Optional[LLMService] = None) -> Dict[str, Any]:
     """
     Analyze enriched business data and score the opportunity.
 
