@@ -9,7 +9,7 @@ specific problems that a website could solve.
 import logging
 from typing import Dict, Any
 
-from services.gemini_service import GeminiService
+from services.llm_service import LLMService
 from models import EnrichedBusiness
 from config import settings
 from prompts import ANALYZER_PROMPT
@@ -17,7 +17,7 @@ from prompts import ANALYZER_PROMPT
 logger = logging.getLogger(__name__)
 
 
-async def analyze_lead(enriched_business: EnrichedBusiness, gemini: GeminiService = None) -> Dict[str, Any]:
+async def analyze_lead(enriched_business: EnrichedBusiness, gemini: LLMService = None) -> Dict[str, Any]:
     """
     Analyze enriched business data and score the opportunity.
 
@@ -52,7 +52,7 @@ async def analyze_lead(enriched_business: EnrichedBusiness, gemini: GeminiServic
     try:
         # Initialize Gemini service (use injected or new instance)
         if gemini is None:
-            gemini = GeminiService(api_key=settings.gemini_api_key)
+            gemini = LLMService(api_key=settings.gemini_api_key)
 
         # Prepare business data for analysis
         business_data = _format_business_data(enriched_business)

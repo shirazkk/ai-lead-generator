@@ -1,25 +1,3 @@
-"""
-AI Lead Generation Agent - FastAPI Backend Application
-
-This is the main entry point for the FastAPI backend that orchestrates:
-- Lead discovery through web search and scraping
-- Lead enrichment with company and contact data
-- AI-powered lead analysis and scoring
-- Personalized outreach email generation and sending
-
-Architecture:
-- Async-first design for optimal performance with I/O operations
-- Modular router structure for clean separation of concerns
-- Centralized error handling and logging
-- CORS-enabled for frontend integration
-
-Free-tier stack:
-- Gemini AI for analysis and content generation
-- Serper API for web search
-- Supabase for data persistence
-- Resend for email delivery
-"""
-
 from contextlib import asynccontextmanager
 from typing import Dict, Any
 import logging
@@ -66,6 +44,7 @@ async def lifespan(_app: FastAPI):
     # Validate required API keys are present
     required_keys = {
         "Gemini AI API": settings.gemini_api_key,
+        "OpenRoute API": settings.openrouter_api_key,
         "Supabase URL": settings.supabase_url,
         "Supabase Key": settings.supabase_key,
         "Resend API": settings.resend_api_key,

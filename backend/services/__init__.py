@@ -2,7 +2,7 @@
 Service modules for AI Lead Generator.
 """
 
-from .gemini_service import GeminiService
+from .llm_service import LLMService
 from .supabase_service import SupabaseService
 
-__all__ = ["GeminiService", "SupabaseService"]
+__all__ = ["LLMService", "SupabaseService"]

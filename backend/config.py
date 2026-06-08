@@ -33,6 +33,21 @@ class Settings(BaseSettings):
         description="Google Gemini AI API key for lead analysis and content generation"
     )
 
+    gemini_model: str = Field(
+        default="gemini-3-flash-preview",
+        description="Model name for Gemini provider"
+    )
+
+    openrouter_api_key: str | None = Field(
+        default=None,
+        description="OpenRouter API key for LLM failover"
+    )
+
+    openrouter_model: str = Field(
+        default="google/gemini-2.0-flash-exp",
+        description="Model name for OpenRouter provider"
+    )
+
     serper_api_key: str | None = Field(
         default=None,
         description="Serper API key for web search and lead discovery (deprecated)"

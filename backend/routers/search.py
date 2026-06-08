@@ -25,7 +25,7 @@ from agents.scraper_agent import enrich_business
 from agents.analyzer_agent import analyze_lead
 from agents.outreach_agent import generate_outreach
 from services.supabase_service import SupabaseService
-from services.gemini_service import GeminiService
+from services.llm_service import LLMService
 from services.job_store import initialize_job, update_job_status, get_job_status, start_job_step, complete_job_step
 from models.lead import Lead
 from models.outreach import Outreach
@@ -42,7 +42,7 @@ router = APIRouter(
 
 # Initialize services
 db = SupabaseService()
-gemini = GeminiService(api_key=settings.gemini_api_key)
+gemini = LLMService(api_key=settings.gemini_api_key)
 
 
 # Request/Response Models

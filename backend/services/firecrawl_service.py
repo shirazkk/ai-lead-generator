@@ -13,6 +13,12 @@ async def scrape_url(url: str, prompt: str) -> dict:
     Scrapes a URL using Firecrawl and extracts data based on the provided prompt.
     Returns an empty dict on failure (including credit exhaustion).
     """
+    # Filter unsupported social media domains
+    social_domains = ["instagram.com", "facebook.com", "linkedin.com", "twitter.com", "tiktok.com"]
+    if any(domain in url for domain in social_domains):
+        logger.info(f"Skipping unsupported social URL (plan limitation): {url}")
+        return {}
+
     try:
         logger.info(f"Firecrawl scraping {url} with prompt: {prompt}")
         schema = {
