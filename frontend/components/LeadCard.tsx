@@ -1,14 +1,14 @@
 'use client';
 
 import type { Lead } from '@/types';
+import Link from 'next/link';
 
 interface LeadCardProps {
   lead: Lead;
-  onViewOutreach: (lead: Lead) => void;
   onDelete: (leadId: string) => void;
 }
 
-export default function LeadCard({ lead, onViewOutreach, onDelete }: LeadCardProps) {
+export default function LeadCard({ lead, onDelete }: LeadCardProps) {
   const getScoreColor = (score: number) => {
     if (score >= 8) return 'text-emerald-400';
     if (score >= 5) return 'text-amber-400';
@@ -36,12 +36,12 @@ export default function LeadCard({ lead, onViewOutreach, onDelete }: LeadCardPro
       </div>
 
       <div className="flex gap-3 pt-4 border-t border-surface">
-        <button
-          onClick={() => onViewOutreach(lead)}
-          className="flex-1 bg-white hover:bg-zinc-200 text-black text-sm font-medium py-2 rounded-md transition-colors"
+        <Link
+          href={`/leads/${lead.id}`}
+          className="flex-1 bg-white hover:bg-zinc-200 text-black text-center text-sm font-medium py-2 rounded-md transition-colors"
         >
-          Generate Outreach
-        </button>
+          View Details
+        </Link>
         <button
           onClick={() => onDelete(lead.id)}
           className="text-zinc-500 hover:text-rose-400 text-sm font-medium px-4 py-2 transition-colors"

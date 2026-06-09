@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { LogOut, User } from 'lucide-react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import type { Lead, Outreach, SearchRequest } from '@/types';
@@ -66,7 +66,12 @@ export default function Home() {
       loadInitialLeads();
       getUser();
     }, 0);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [loadInitialLeads, getUser]);
 
   useEffect(() => {
@@ -76,7 +81,18 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [leads, calculateStats]);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const handleSearch = async (request: SearchRequest) => {
+    // Cancel previous search if it exists
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new abort controller
+    const ctrl = new AbortController();
+    abortControllerRef.current = ctrl;
+
     setSearching(true);
     setError(null);
     setActiveJobId(null);
@@ -95,6 +111,7 @@ export default function Home() {
       const token = session?.access_token;
 
       await fetchEventSource(`${API_BASE_URL}/api/status/${result.job_id}/stream`, {
+        signal: ctrl.signal,
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -116,6 +133,10 @@ export default function Home() {
           }
         },
         onerror(err) {
+          // If aborted, don't treat as error
+          if (err.name === 'AbortError') {
+            return;
+          }
           console.error('SSE Error:', err);
           setError('Error during real-time progress tracking');
           setSearching(false);
@@ -125,8 +146,17 @@ export default function Home() {
       });
 
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.log('Search aborted');
+        return;
+      }
       setError(err instanceof Error ? err.message : 'Search failed');
       setSearching(false);
+    } finally {
+      // Clear reference if this was the current controller
+      if (abortControllerRef.current === ctrl) {
+        abortControllerRef.current = null;
+      }
     }
   };
 
@@ -252,7 +282,6 @@ export default function Home() {
               <LeadCard
                 key={lead.id}
                 lead={lead}
-                onViewOutreach={handleViewOutreach}
                 onDelete={handleDeleteLead}
               />
             ))}

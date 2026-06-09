@@ -14,6 +14,7 @@ import asyncio
 import uuid
 from typing import Dict, Any, List, Optional, Tuple
 from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 
 # Define semaphore for rate limiting
@@ -25,7 +26,7 @@ from agents.scraper_agent import enrich_business
 from agents.analyzer_agent import analyze_lead
 from agents.outreach_agent import generate_outreach
 from services.supabase_service import SupabaseService
-from services.auth_service import get_current_user
+from services.auth_service import get_current_user, security
 from services.llm_service import LLMService
 from services.job_store import initialize_job, update_job_status, get_job_status, start_job_step, complete_job_step
 from models.lead import Lead
@@ -86,12 +87,7 @@ class SearchResponse(BaseModel):
     error: Dict[str, Any] | None = Field(None, description="Error details if failed")
 
 
-async def _process_single_business(
-    raw_business: RawBusiness,
-    city: str,
-    job_id: str,
-    user_id: str
-) -> Optional[Tuple[Lead, Outreach]]:
+async def _process_single_business(raw_business: RawBusiness, city: str, job_id: str, user_id: str, access_token: str) -> Optional[Tuple[Lead, Outreach]]:
     """Helper to process a single business through the pipeline."""
     async with processing_semaphore:
         try:
@@ -145,9 +141,9 @@ async def _process_single_business(
             await complete_job_step(job_id, "outreach_done", "outreach")
 
             # PHASE 5: Save to Supabase
-            await db.create_lead(lead.model_dump(), user_id=user_id)
-            await db.create_outreach(outreach.model_dump(), user_id=user_id)
-            
+            await db.create_lead(lead.model_dump(), user_id=user_id, access_token=access_token)
+            await db.create_outreach(outreach.model_dump(), user_id=user_id, access_token=access_token)
+
             # Update progress
             status_data = get_job_status(job_id)
             if status_data:
@@ -173,7 +169,8 @@ async def _process_single_business(
 )
 async def search_leads(
     request: SearchRequest,
-    current_user_id: str = Depends(get_current_user)
+    current_user_id: str = Depends(get_current_user),
+    token: HTTPAuthorizationCredentials = Depends(security)
 ) -> SearchResponse:
     logger.info(
         f"Starting lead search for user {current_user_id}: city={request.city}, "
@@ -197,32 +194,25 @@ async def search_leads(
         initialize_job(job_id, len(raw_businesses), user_id=current_user_id)
         logger.info(f"Initialized job tracking for user {current_user_id}: {job_id}")
 
-        # PHASE 2-5: Parallel processing
-        logger.info("Starting parallel pipeline processing")
-        tasks = [
-            _process_single_business(raw_business, request.city, job_id, current_user_id)
-            for raw_business in raw_businesses
-        ]
+        async def run_pipeline():
+            # PHASE 2-5: Parallel processing
+            logger.info("Starting parallel pipeline processing")
+            tasks = [
+                _process_single_business(raw_business, request.city, job_id, current_user_id, token.credentials)
+                for raw_business in raw_businesses
+            ]
 
-        results = await asyncio.gather(*tasks)
+            await asyncio.gather(*tasks)
+            logger.info(f"Pipeline completed for job {job_id}")
 
-        # Collect results
-        leads: List[Lead] = []
-        outreach_records: List[Outreach] = []
-        for result in results:
-            if result:
-                leads.append(result[0])
-                outreach_records.append(result[1])
-
-        # Final stats
-        high_score_count = sum(1 for lead in leads if lead.opportunity_score >= 7)
-        avg_score = sum(lead.opportunity_score for lead in leads) / len(leads) if leads else 0
+        # Run pipeline in background
+        asyncio.create_task(run_pipeline())
 
         return SearchResponse(
             success=True,
             job_id=job_id,
-            leads=leads,
-            stats=SearchStats(total=len(leads), high_score_count=high_score_count, avg_score=round(avg_score, 2)),
+            leads=[],
+            stats=SearchStats(total=len(raw_businesses), high_score_count=0, avg_score=0.0),
             error=None
         )
 

@@ -59,6 +59,9 @@ export default function AgentProgress({ jobId }: AgentProgressProps) {
           }
         },
         onerror(err) {
+          if (err.name === 'AbortError') {
+            return;
+          }
           console.error('SSE Error:', err);
           throw err;
         }
