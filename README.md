@@ -1,105 +1,66 @@
 # ⚡ AI Lead Generation & Personalized Outreach Agent
 
-An autonomous, AI-powered system designed to identify businesses with a weak online presence, research them, score their opportunity value, and generate hyper-personalized cold outreach emails.
+An autonomous, end-to-end AI system designed to identify businesses with a weak online presence, research them, score their opportunity value, and generate hyper-personalized cold outreach emails.
 
 ---
 
-## 🏗️ Architecture Overview
+## ✨ Key Features
 
-This project utilizes a decoupled architecture to ensure scalability and maintainability:
-
-*   **Frontend:** [Next.js 16](https://nextjs.org/) (App Router), TypeScript, Tailwind CSS v4, and Framer Motion for a modern, responsive UI.
-*   **Backend:** [FastAPI](https://fastapi.tiangolo.com/) (Python) for robust, async-first API handling.
-*   **AI Brain:** Google Gemini 2.0 Flash via the `google-generativeai` SDK.
-*   **Services:** Serper.dev (Search), Playwright (Scraping), Supabase (PostgreSQL), and Resend.com (Email).
+- **🎯 Intelligent Discovery:** Automatically finds businesses without websites using the Google Places API, with dynamic neighborhood-level scanning for maximum coverage.
+- **🔍 Deep Enrichment:** Uses **Firecrawl** to scour Yelp, social media (Facebook, Instagram, LinkedIn), and search results to find business owners, emails, and detailed descriptions.
+- **🧠 AI-Powered Analysis:** Leverages **Google Gemini 3.1 Flash** (via OpenRouter failover) to analyze business gaps, score leads (1-10), and identify specific pain points a website can solve.
+- **✉️ Hyper-Personalized Outreach:** Generates compelling, context-aware cold emails tailored to the business's specific situation and needs.
+- **📊 Real-time Pipeline Tracking:** A modern Next.js dashboard that tracks the progress of the multi-agent pipeline in real-time via Server-Sent Events (SSE).
+- **🚀 One-Click Outreach:** Review, edit, regenerate with different tones (Friendly, Professional, Casual), and send emails directly through the platform via Resend.
 
 ---
 
-## 🛠️ Prerequisites
+## 🏗️ Architecture & Tech Stack
 
-Before you begin, ensure you have the following installed on your machine:
+The project follows a decoupled, async-first architecture:
 
-*   **Python:** 3.11+
-*   **Node.js:** 18+
-*   **Environment Variables:** You will need API keys for:
-    *   `GEMINI_API_KEY`
-    *   `SERPER_API_KEY`
-    *   `SUPABASE_URL` / `SUPABASE_KEY`
-    *   `RESEND_API_KEY`
+### Backend (Python)
+- **Framework:** [FastAPI](https://fastapi.tiangolo.com/) (Async/Await)
+- **AI Orchestration:** Custom multi-agent system (Discovery, Scraper, Analyzer, Outreach).
+- **LLM Service:** Multi-provider support (OpenRouter primary, Gemini direct failover).
+- **Discovery:** Google Places API + Dynamic Neighborhood search (Nominatim).
+- **Scraping:** Firecrawl API for structured web data extraction.
+- **Database:** Supabase (PostgreSQL) with Row Level Security (RLS).
+- **Email:** Resend.com for reliable email delivery.
+
+### Frontend (TypeScript)
+- **Framework:** [Next.js 16](https://nextjs.org/) (App Router)
+- **Styling:** Tailwind CSS v4
+- **Animations:** Framer Motion for interactive UI and staggered reveals.
+- **Authentication:** Supabase Auth 
+- **State Management:** React Hooks + Real-time SSE for pipeline updates.
 
 ---
 
 ## 🚀 Setup & Installation
 
-### 1. Project Cloning
-
-```bash
-git clone <repository-url>
-cd ai_lead_generator
-```
+### 1. Prerequisites
+- Python 3.11+
+- Node.js 18+
+- API Keys: Google Gemini (or OpenRouter), Firecrawl, Google Places, Supabase, Resend.
 
 ### 2. Backend Setup
-
 ```bash
 cd backend
-
-# Create and activate virtual environment
 python -m venv venv
-# Windows:
-venv\Scripts\activate
-# Unix/macOS:
-source venv/bin/activate
-
-# Install dependencies
+# Windows: venv\Scripts\activate | Unix: source venv/bin/activate
 pip install -r requirements.txt
-playwright install chromium
-
-# Configuration:
-# Copy the example env file and update with your credentials
-cp .env.example .env
-
-# Run the backend
-python main.py
+cp .env.example .env # Update with your keys
+uvicorn main:app --reload
 ```
 
 ### 3. Frontend Setup
-
 ```bash
-cd ../frontend
-
-# Install dependencies
+cd frontend
 npm install
-
-# Configuration:
-# Create a .env.local file with your backend URL
-echo "NEXT_PUBLIC_API_URL=http://localhost:8000" > .env.local
-
-# Run the development server
+# Create .env.local with NEXT_PUBLIC_API_URL=http://localhost:8000
 npm run dev
 ```
 
-The application will be accessible at:
-*   **Frontend:** `http://localhost:3000`
-*   **Backend API:** `http://localhost:8000`
-*   **API Documentation (Swagger):** `http://localhost:8000/docs`
-
 ---
 
-## 📘 Documentation & References
-
-For in-depth technical details, architecture decisions, and development guidelines, refer to the following files:
-
-| File | Description |
-| :--- | :--- |
-| [`GEMINI.md`](./GEMINI.md) | **Core Architecture, Conventions, and Workflow.** |
-| [`AI_Lead_Agent_PRD.md`](./AI_Lead_Agent_PRD.md) | Full Project Requirements & Specifications. |
-| [`BACKEND_TESTING_GUIDE.md`](./BACKEND_TESTING_GUIDE.md) | Comprehensive backend testing procedures. |
-
----
-
-## 🧪 Testing
-
-For a complete list of test cases and manual testing curls, please refer to `BACKEND_TESTING_GUIDE.md`.
-
-*   **Health Check:** `GET http://localhost:8000/health`
-*   **Pipeline Test:** `POST http://localhost:8000/api/search`
